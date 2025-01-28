@@ -1,3 +1,9 @@
+/**
+ * Internal dependencies
+ */
+import { lock } from '../lock-unlock';
+import { isContentBlock } from './utils';
+
 // The blocktype is the most important concept within the block API. It defines
 // all aspects of the block configuration and its interfaces, including `edit`
 // and `save`. The transforms specification allows converting one blocktype to
@@ -23,7 +29,7 @@ export {
 //
 // This has multiple practical implications: when parsing, we can safely dispose
 // of any block boundary found within a block from the innerHTML property when
-// transfering to state. Not doing so would have a compounding effect on memory
+// transferring to state. Not doing so would have a compounding effect on memory
 // and uncertainty over the source of truth. This can be illustrated in how,
 // given a tree of `n` nested blocks, the entry node would have to contain the
 // actual content of each block while each subsequent block node in the state
@@ -34,6 +40,7 @@ export {
 // components whose mechanisms can be shielded from the `edit` implementation
 // and just passed along.
 export { default as parse } from './parser';
+export { serializeRawBlock } from './parser/serialize-raw-block';
 export {
 	getBlockAttributes,
 	parseWithAttributeSchema,
@@ -41,7 +48,7 @@ export {
 
 // While block transformations account for a specific surface of the API, there
 // are also raw transformations which handle arbitrary sources not made out of
-// blocks but producing block basaed on various heursitics. This includes
+// blocks but producing block basaed on various heuristics. This includes
 // pasting rich text or HTML data.
 export {
 	pasteHandler,
@@ -88,7 +95,7 @@ export {
 // they will be run for all valid and invalid blocks alike. However, once a
 // block is detected as invalid -- failing the three first steps -- it is
 // adequate to spend more time determining validity before throwing a conflict.
-export { isValidBlockContent } from './validation';
+export { isValidBlockContent, validateBlock } from './validation';
 export { getCategories, setCategories, updateCategory } from './categories';
 
 // Blocks are inherently indifferent about where the data they operate with ends
@@ -134,14 +141,20 @@ export {
 	unregisterBlockStyle,
 	registerBlockVariation,
 	unregisterBlockVariation,
+	registerBlockBindingsSource,
+	unregisterBlockBindingsSource,
+	getBlockBindingsSource,
+	getBlockBindingsSources,
 } from './registration';
 export {
+	isUnmodifiedBlock,
 	isUnmodifiedDefaultBlock,
 	normalizeIconObject,
 	isValidIcon,
 	getBlockLabel as __experimentalGetBlockLabel,
 	getAccessibleBlockLabel as __experimentalGetAccessibleBlockLabel,
 	__experimentalSanitizeBlockAttributes,
+	getBlockAttributesNamesByRole,
 	__experimentalGetBlockAttributesNamesByRole,
 } from './utils';
 
@@ -160,5 +173,8 @@ export { default as node } from './node';
 export {
 	__EXPERIMENTAL_STYLE_PROPERTY,
 	__EXPERIMENTAL_ELEMENTS,
-	__EXPERIMENTAL_PATHS_WITH_MERGE,
+	__EXPERIMENTAL_PATHS_WITH_OVERRIDE,
 } from './constants';
+
+export const privateApis = {};
+lock( privateApis, { isContentBlock } );

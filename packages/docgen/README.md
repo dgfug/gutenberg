@@ -6,7 +6,7 @@ Some characteristics:
 
 -   If the export statement doesn't contain any JSDoc, it'll look up for JSDoc up to the declaration.
 -   It can resolve relative dependencies, either files or directories. For example, `import default from './dependency'` will find `dependency.js` or `dependency/index.js`
--   For TypeScript support, all types must be explicity annotated as the TypeScript Babel plugin is unable to consume inferred types (it does not run the TS compiler, after all—it merely parses TypeScript). For example, all function return types must be explicitly annotated if they are to be documented by `docgen`.
+-   For TypeScript support, all types must be explicitly annotated as the TypeScript Babel plugin is unable to consume inferred types (it does not run the TS compiler, after all—it merely parses TypeScript). For example, all function return types must be explicitly annotated if they are to be documented by `docgen`.
 
 ## Installation
 
@@ -15,6 +15,8 @@ Install the module
 ```bash
 npm install @wordpress/docgen --save-dev
 ```
+
+**Note**: This package requires Node.js version with long-term support status (check [Active LTS or Maintenance LTS releases](https://nodejs.org/en/about/previous-releases)). It is not compatible with older versions.
 
 ## Usage
 
@@ -167,12 +169,12 @@ with `./count/index.js` contents being:
 
 ````js
 /**
- * Substracts two numbers.
+ * Subtracts two numbers.
  *
  * @example
  *
  * ```js
- * const result = substraction( 5, 2 );
+ * const result = subtraction( 5, 2 );
  * console.log( result ); // Will log 3
  * ```
  *
@@ -180,7 +182,7 @@ with `./count/index.js` contents being:
  * @param {number} term2 Second number.
  * @return {number} The result of subtracting the two numbers.
  */
-export function substraction( term1, term2 ) {
+export function subtraction( term1, term2 ) {
 	return term1 - term2;
 }
 
@@ -231,16 +233,16 @@ console.log( result ); // Will log 7
 
 `number` The result of adding the two numbers.
 
-## substraction
+## subtraction
 
 [example-module.js#L1-L1](example-module.js#L1-L1)
 
-Substracts two numbers.
+Subtracts two numbers.
 
 **Usage**
 
 ```js
-const result = substraction( 5, 2 );
+const result = subtraction( 5, 2 );
 console.log( result ); // Will log 3
 ```
 
@@ -253,8 +255,6 @@ console.log( result ); // Will log 3
 
 `number` The result of subtracting the two numbers.
 ````
-
-<br/><br/><p align="center"><img src="https://s.w.org/style/images/codeispoetry.png?1" alt="Code is Poetry." /></p>
 
 ### TypeScript support
 
@@ -293,3 +293,11 @@ Adds two numbers.
 
 `number` The result of adding the two numbers.
 ```
+
+## Contributing to this package
+
+This is an individual package that's part of the Gutenberg project. The project is organized as a monorepo. It's made up of multiple self-contained software packages, each with a specific purpose. The packages in this monorepo are published to [npm](https://www.npmjs.com/) and used by [WordPress](https://make.wordpress.org/core/) as well as other software projects.
+
+To find out more about contributing to this package or Gutenberg as a whole, please read the project's main [contributor guide](https://github.com/WordPress/gutenberg/tree/HEAD/CONTRIBUTING.md).
+
+<br /><br /><p align="center"><img src="https://s.w.org/style/images/codeispoetry.png?1" alt="Code is Poetry." /></p>

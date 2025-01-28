@@ -1,0 +1,35 @@
+.spacing-sizes-control {
+	.spacing-sizes-control__custom-value-input,
+	.spacing-sizes-control__label {
+		margin-bottom: 0;
+	}
+
+	.spacing-sizes-control__range-control,
+	.spacing-sizes-control__custom-value-range {
+		flex: 1;
+		margin-bottom: 0; // Needed for some instances of the range control, such as the Spacer block.
+	}
+}
+
+.spacing-sizes-control__header {
+	height: $grid-unit-20;
+	margin-bottom: $grid-unit-15;
+}
+
+.spacing-sizes-control__dropdown {
+	height: $grid-unit-30;
+}
+
+.spacing-sizes-control__custom-select-control,
+.spacing-sizes-control__custom-value-input {
+	flex: 1;
+}
+
+.spacing-sizes-control__icon,
+.spacing-sizes-control__custom-toggle {
+	flex: 0 0 auto;
+}
+
+.spacing-sizes-control__icon {
+	margin-left: $grid-unit-05 * -1; // Aligns the icon to the control header.
+}

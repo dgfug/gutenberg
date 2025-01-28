@@ -7,53 +7,97 @@ import {
 	__experimentalHStack as HStack,
 	__experimentalZStack as ZStack,
 	__experimentalVStack as VStack,
-	FlexBlock,
 	ColorIndicator,
+	Button,
 } from '@wordpress/components';
-import { __, _n, sprintf } from '@wordpress/i18n';
+import { isRTL, __ } from '@wordpress/i18n';
+import { Icon, shuffle, chevronLeft, chevronRight } from '@wordpress/icons';
+import { useMemo } from '@wordpress/element';
+import { privateApis as blockEditorPrivateApis } from '@wordpress/block-editor';
 
 /**
  * Internal dependencies
  */
 import Subtitle from './subtitle';
-import NavigationButton from './navigation-button';
-import { useSetting } from './hooks';
+import { NavigationButtonAsItem } from './navigation-button';
+import { useColorRandomizer } from './hooks';
+import ColorIndicatorWrapper from './color-indicator-wrapper';
+import { unlock } from '../../lock-unlock';
+
+const { useGlobalSetting } = unlock( blockEditorPrivateApis );
 
 const EMPTY_COLORS = [];
 
 function Palette( { name } ) {
-	const [ colorsSetting ] = useSetting( 'color.palette.user', name );
-	const colors = colorsSetting || EMPTY_COLORS;
+	const [ customColors ] = useGlobalSetting( 'color.palette.custom' );
+	const [ themeColors ] = useGlobalSetting( 'color.palette.theme' );
+	const [ defaultColors ] = useGlobalSetting( 'color.palette.default' );
+
+	const [ defaultPaletteEnabled ] = useGlobalSetting(
+		'color.defaultPalette',
+		name
+	);
+
+	const [ randomizeThemeColors ] = useColorRandomizer();
+
+	const colors = useMemo(
+		() => [
+			...( customColors || EMPTY_COLORS ),
+			...( themeColors || EMPTY_COLORS ),
+			...( defaultColors && defaultPaletteEnabled
+				? defaultColors
+				: EMPTY_COLORS ),
+		],
+		[ customColors, themeColors, defaultColors, defaultPaletteEnabled ]
+	);
+
 	const screenPath = ! name
 		? '/colors/palette'
-		: '/blocks/' + name + '/colors/palette';
+		: '/blocks/' + encodeURIComponent( name ) + '/colors/palette';
 
 	return (
 		<VStack spacing={ 3 }>
-			<Subtitle>{ __( 'Palette' ) }</Subtitle>
+			<Subtitle level={ 3 }>{ __( 'Palette' ) }</Subtitle>
 			<ItemGroup isBordered isSeparated>
-				<NavigationButton path={ screenPath }>
-					<HStack>
-						<FlexBlock>
-							<ZStack isLayered={ false } offset={ -8 }>
-								{ colors.slice( 0, 5 ).map( ( { color } ) => (
-									<ColorIndicator
-										key={ color }
-										colorValue={ color }
-									/>
-								) ) }
-							</ZStack>
-						</FlexBlock>
-						<FlexItem>
-							{ sprintf(
-								// Translators: %d: Number of palette colors.
-								_n( '%d color', '%d colors', colors.length ),
-								colors.length
-							) }
-						</FlexItem>
+				<NavigationButtonAsItem path={ screenPath }>
+					<HStack direction="row">
+						{ colors.length > 0 ? (
+							<>
+								<ZStack isLayered={ false } offset={ -8 }>
+									{ colors
+										.slice( 0, 5 )
+										.map( ( { color }, index ) => (
+											<ColorIndicatorWrapper
+												key={ `${ color }-${ index }` }
+											>
+												<ColorIndicator
+													colorValue={ color }
+												/>
+											</ColorIndicatorWrapper>
+										) ) }
+								</ZStack>
+								<FlexItem isBlock>
+									{ __( 'Edit palette' ) }
+								</FlexItem>
+							</>
+						) : (
+							<FlexItem>{ __( 'Add colors' ) }</FlexItem>
+						) }
+						<Icon icon={ isRTL() ? chevronLeft : chevronRight } />
 					</HStack>
-				</NavigationButton>
+				</NavigationButtonAsItem>
 			</ItemGroup>
+			{ window.__experimentalEnableColorRandomizer &&
+				themeColors?.length > 0 && (
+					<Button
+						__next40pxDefaultSize
+						variant="secondary"
+						icon={ shuffle }
+						onClick={ randomizeThemeColors }
+					>
+						{ __( 'Randomize colors' ) }
+					</Button>
+				) }
 		</VStack>
 	);
 }

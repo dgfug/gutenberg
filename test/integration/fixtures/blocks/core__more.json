@@ -1,12 +1,11 @@
 [
 	{
-		"clientId": "_clientId_0",
 		"name": "core/more",
 		"isValid": true,
 		"attributes": {
+			"customText": "",
 			"noTeaser": false
 		},
-		"innerBlocks": [],
-		"originalContent": "<!--more-->"
+		"innerBlocks": []
 	}
 ]

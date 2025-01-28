@@ -1,7 +1,7 @@
 /**
  * External dependencies
  */
-import classnames from 'classnames';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
@@ -11,9 +11,13 @@ import {
 	InspectorControls,
 	BlockControls,
 	useBlockProps,
+	useBlockDisplayInformation,
+	RichText,
 } from '@wordpress/block-editor';
+import { createBlock, getDefaultBlockName } from '@wordpress/blocks';
 import { Spinner, TextControl } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
+import { decodeEntities } from '@wordpress/html-entities';
 import { __ } from '@wordpress/i18n';
 import { store as coreStore } from '@wordpress/core-data';
 
@@ -22,17 +26,32 @@ import { store as coreStore } from '@wordpress/core-data';
  */
 import usePostTerms from './use-post-terms';
 
+// Allowed formats for the prefix and suffix fields.
+const ALLOWED_FORMATS = [
+	'core/bold',
+	'core/image',
+	'core/italic',
+	'core/link',
+	'core/strikethrough',
+	'core/text-color',
+];
+
 export default function PostTermsEdit( {
 	attributes,
+	clientId,
 	context,
+	isSelected,
 	setAttributes,
+	insertBlocksAfter,
 } ) {
-	const { term, textAlign, separator } = attributes;
+	const { term, textAlign, separator, prefix, suffix } = attributes;
 	const { postId, postType } = context;
 
 	const selectedTerm = useSelect(
 		( select ) => {
-			if ( ! term ) return {};
+			if ( ! term ) {
+				return {};
+			}
 			const { getTaxonomy } = select( coreStore );
 			const taxonomy = getTaxonomy( term );
 			return taxonomy?.visibility?.publicly_queryable ? taxonomy : {};
@@ -41,20 +60,16 @@ export default function PostTermsEdit( {
 	);
 	const { postTerms, hasPostTerms, isLoading } = usePostTerms( {
 		postId,
-		postType,
 		term: selectedTerm,
 	} );
 	const hasPost = postId && postType;
+	const blockInformation = useBlockDisplayInformation( clientId );
 	const blockProps = useBlockProps( {
-		className: classnames( {
+		className: clsx( {
 			[ `has-text-align-${ textAlign }` ]: textAlign,
 			[ `taxonomy-${ term }` ]: term,
 		} ),
 	} );
-
-	if ( ! hasPost || ! term ) {
-		return <div { ...blockProps }>{ __( 'Post Terms' ) }</div>;
-	}
 
 	return (
 		<>
@@ -66,8 +81,10 @@ export default function PostTermsEdit( {
 					} }
 				/>
 			</BlockControls>
-			<InspectorControls __experimentalGroup="advanced">
+			<InspectorControls group="advanced">
 				<TextControl
+					__next40pxDefaultSize
+					__nextHasNoMarginBottom
 					autoComplete="off"
 					label={ __( 'Separator' ) }
 					value={ separator || '' }
@@ -78,8 +95,26 @@ export default function PostTermsEdit( {
 				/>
 			</InspectorControls>
 			<div { ...blockProps }>
-				{ isLoading && <Spinner /> }
-				{ ! isLoading &&
+				{ isLoading && hasPost && <Spinner /> }
+				{ ! isLoading && ( isSelected || prefix ) && (
+					<RichText
+						identifier="prefix"
+						allowedFormats={ ALLOWED_FORMATS }
+						className="wp-block-post-terms__prefix"
+						aria-label={ __( 'Prefix' ) }
+						placeholder={ __( 'Prefix' ) + ' ' }
+						value={ prefix }
+						onChange={ ( value ) =>
+							setAttributes( { prefix: value } )
+						}
+						tagName="span"
+					/>
+				) }
+				{ ( ! hasPost || ! term ) && (
+					<span>{ blockInformation.title }</span>
+				) }
+				{ hasPost &&
+					! isLoading &&
 					hasPostTerms &&
 					postTerms
 						.map( ( postTerm ) => (
@@ -87,8 +122,9 @@ export default function PostTermsEdit( {
 								key={ postTerm.id }
 								href={ postTerm.link }
 								onClick={ ( event ) => event.preventDefault() }
+								rel="tag"
 							>
-								{ postTerm.name }
+								{ decodeEntities( postTerm.name ) }
 							</a>
 						) )
 						.reduce( ( prev, curr ) => (
@@ -100,10 +136,30 @@ export default function PostTermsEdit( {
 								{ curr }
 							</>
 						) ) }
-				{ ! isLoading &&
+				{ hasPost &&
+					! isLoading &&
 					! hasPostTerms &&
 					( selectedTerm?.labels?.no_terms ||
 						__( 'Term items not found.' ) ) }
+				{ ! isLoading && ( isSelected || suffix ) && (
+					<RichText
+						identifier="suffix"
+						allowedFormats={ ALLOWED_FORMATS }
+						className="wp-block-post-terms__suffix"
+						aria-label={ __( 'Suffix' ) }
+						placeholder={ ' ' + __( 'Suffix' ) }
+						value={ suffix }
+						onChange={ ( value ) =>
+							setAttributes( { suffix: value } )
+						}
+						tagName="span"
+						__unstableOnSplitAtEnd={ () =>
+							insertBlocksAfter(
+								createBlock( getDefaultBlockName() )
+							)
+						}
+					/>
+				) }
 			</div>
 		</>
 	);

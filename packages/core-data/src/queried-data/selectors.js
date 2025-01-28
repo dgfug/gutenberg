@@ -1,14 +1,18 @@
 /**
  * External dependencies
  */
-import createSelector from 'rememo';
 import EquivalentKeyMap from 'equivalent-key-map';
-import { get, set } from 'lodash';
+
+/**
+ * WordPress dependencies
+ */
+import { createSelector } from '@wordpress/data';
 
 /**
  * Internal dependencies
  */
 import getQueryParts from './get-query-parts';
+import { setNestedValue } from '../utils';
 
 /**
  * Cache of state keys to EquivalentKeyMap where the inner map tracks queries
@@ -28,18 +32,12 @@ const queriedItemsCacheByState = new WeakMap();
  * @return {?Array} Query items.
  */
 function getQueriedItemsUncached( state, query ) {
-	const {
-		stableKey,
-		page,
-		perPage,
-		include,
-		fields,
-		context,
-	} = getQueryParts( query );
+	const { stableKey, page, perPage, include, fields, context } =
+		getQueryParts( query );
 	let itemIds;
 
 	if ( state.queries?.[ context ]?.[ stableKey ] ) {
-		itemIds = state.queries[ context ][ stableKey ];
+		itemIds = state.queries[ context ][ stableKey ].itemIds;
 	}
 
 	if ( ! itemIds ) {
@@ -58,7 +56,9 @@ function getQueriedItemsUncached( state, query ) {
 		if ( Array.isArray( include ) && ! include.includes( itemId ) ) {
 			continue;
 		}
-
+		if ( itemId === undefined ) {
+			continue;
+		}
 		// Having a target item ID doesn't guarantee that this object has been queried.
 		if ( ! state.items[ context ]?.hasOwnProperty( itemId ) ) {
 			return null;
@@ -72,8 +72,12 @@ function getQueriedItemsUncached( state, query ) {
 
 			for ( let f = 0; f < fields.length; f++ ) {
 				const field = fields[ f ].split( '.' );
-				const value = get( item, field );
-				set( filteredItem, field, value );
+				let value = item;
+				field.forEach( ( fieldName ) => {
+					value = value?.[ fieldName ];
+				} );
+
+				setNestedValue( filteredItem, field, value );
 			}
 		} else {
 			// If expecting a complete item, validate that completeness, or
@@ -120,3 +124,15 @@ export const getQueriedItems = createSelector( ( state, query = {} ) => {
 	queriedItemsCache.set( query, items );
 	return items;
 } );
+
+export function getQueriedTotalItems( state, query = {} ) {
+	const { stableKey, context } = getQueryParts( query );
+
+	return state.queries?.[ context ]?.[ stableKey ]?.meta?.totalItems ?? null;
+}
+
+export function getQueriedTotalPages( state, query = {} ) {
+	const { stableKey, context } = getQueryParts( query );
+
+	return state.queries?.[ context ]?.[ stableKey ]?.meta?.totalPages ?? null;
+}

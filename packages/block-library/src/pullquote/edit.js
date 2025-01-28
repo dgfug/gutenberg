@@ -1,7 +1,7 @@
 /**
  * External dependencies
  */
-import classnames from 'classnames';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
@@ -13,7 +13,8 @@ import {
 	RichText,
 	useBlockProps,
 } from '@wordpress/block-editor';
-import { createBlock } from '@wordpress/blocks';
+import { createBlock, getDefaultBlockName } from '@wordpress/blocks';
+import { Platform } from '@wordpress/element';
 
 /**
  * Internal dependencies
@@ -21,9 +22,7 @@ import { createBlock } from '@wordpress/blocks';
 import { Figure } from './figure';
 import { BlockQuote } from './blockquote';
 
-/**
- * Internal dependencies
- */
+const isWebPlatform = Platform.OS === 'web';
 
 function PullQuoteEdit( {
 	attributes,
@@ -33,7 +32,7 @@ function PullQuoteEdit( {
 } ) {
 	const { textAlign, citation, value } = attributes;
 	const blockProps = useBlockProps( {
-		className: classnames( {
+		className: clsx( {
 			[ `has-text-align-${ textAlign }` ]: textAlign,
 		} ),
 	} );
@@ -53,7 +52,7 @@ function PullQuoteEdit( {
 				<BlockQuote>
 					<RichText
 						identifier="value"
-						multiline
+						tagName="p"
 						value={ value }
 						onChange={ ( nextValue ) =>
 							setAttributes( {
@@ -70,6 +69,8 @@ function PullQuoteEdit( {
 					{ shouldShowCitation && (
 						<RichText
 							identifier="citation"
+							tagName={ isWebPlatform ? 'cite' : undefined }
+							style={ { display: 'block' } }
 							value={ citation }
 							aria-label={ __( 'Pullquote citation text' ) }
 							placeholder={
@@ -86,7 +87,7 @@ function PullQuoteEdit( {
 							textAlign="center"
 							__unstableOnSplitAtEnd={ () =>
 								insertBlocksAfter(
-									createBlock( 'core/paragraph' )
+									createBlock( getDefaultBlockName() )
 								)
 							}
 						/>

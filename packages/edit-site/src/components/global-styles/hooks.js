@@ -1,274 +1,111 @@
 /**
  * External dependencies
  */
-import { get, cloneDeep, set, isEqual, has } from 'lodash';
+import { colord, extend } from 'colord';
+import a11yPlugin from 'colord/plugins/a11y';
 
 /**
  * WordPress dependencies
  */
-import { __ } from '@wordpress/i18n';
-import { useContext, useCallback, useMemo } from '@wordpress/element';
-import {
-	getBlockType,
-	__EXPERIMENTAL_PATHS_WITH_MERGE as PATHS_WITH_MERGE,
-	__EXPERIMENTAL_STYLE_PROPERTY as STYLE_PROPERTY,
-} from '@wordpress/blocks';
+import { store as blocksStore } from '@wordpress/blocks';
+import { privateApis as blockEditorPrivateApis } from '@wordpress/block-editor';
 
 /**
  * Internal dependencies
  */
-import { getValueFromVariable, getPresetVariableFromValue } from './utils';
-import { GlobalStylesContext } from './context';
+import { unlock } from '../../lock-unlock';
+import { useSelect } from '@wordpress/data';
 
-const EMPTY_CONFIG = { isGlobalStylesUserThemeJSON: true, version: 1 };
+const { useGlobalSetting, useGlobalStyle } = unlock( blockEditorPrivateApis );
 
-export const useGlobalStylesReset = () => {
-	const { user: config, setUserConfig } = useContext( GlobalStylesContext );
-	const canReset = !! config && ! isEqual( config, EMPTY_CONFIG );
-	return [
-		canReset,
-		useCallback( () => setUserConfig( () => EMPTY_CONFIG ), [
-			setUserConfig,
-		] ),
-	];
-};
+// Enable colord's a11y plugin.
+extend( [ a11yPlugin ] );
 
-export function useSetting( path, blockName, source = 'all' ) {
-	const {
-		merged: mergedConfig,
-		base: baseConfig,
-		user: userConfig,
-		setUserConfig,
-	} = useContext( GlobalStylesContext );
+export function useColorRandomizer( name ) {
+	const [ themeColors, setThemeColors ] = useGlobalSetting(
+		'color.palette.theme',
+		name
+	);
 
-	const fullPath = ! blockName
-		? `settings.${ path }`
-		: `settings.blocks.${ blockName }.${ path }`;
+	function randomizeColors() {
+		/* eslint-disable no-restricted-syntax */
+		const randomRotationValue = Math.floor( Math.random() * 225 );
+		/* eslint-enable no-restricted-syntax */
 
-	const setSetting = ( newValue ) => {
-		setUserConfig( ( currentConfig ) => {
-			const newUserConfig = cloneDeep( currentConfig );
-			const pathToSet = PATHS_WITH_MERGE[ path ]
-				? fullPath + '.user'
-				: fullPath;
-			set( newUserConfig, pathToSet, newValue );
+		const newColors = themeColors.map( ( colorObject ) => {
+			const { color } = colorObject;
+			const newColor = colord( color )
+				.rotate( randomRotationValue )
+				.toHex();
 
-			return newUserConfig;
+			return {
+				...colorObject,
+				color: newColor,
+			};
 		} );
-	};
 
-	const getSettingValueForContext = ( name ) => {
-		const currentPath = ! name
-			? `settings.${ path }`
-			: `settings.blocks.${ name }.${ path }`;
-
-		const getSettingValue = ( configToUse ) => {
-			const result = get( configToUse, currentPath );
-			if ( PATHS_WITH_MERGE[ path ] ) {
-				return result?.user ?? result?.theme ?? result?.core;
-			}
-			return result;
-		};
-
-		let result;
-		switch ( source ) {
-			case 'all':
-				result = getSettingValue( mergedConfig );
-				break;
-			case 'user':
-				result = getSettingValue( userConfig );
-				break;
-			case 'base':
-				result = getSettingValue( baseConfig );
-				break;
-			default:
-				throw 'Unsupported source';
-		}
-
-		return result;
-	};
-
-	// Unlike styles settings get inherited from top level settings.
-	const resultWithFallback =
-		getSettingValueForContext( blockName ) ?? getSettingValueForContext();
-
-	return [ resultWithFallback, setSetting ];
-}
-
-export function useStyle( path, blockName, source = 'all' ) {
-	const {
-		merged: mergedConfig,
-		base: baseConfig,
-		user: userConfig,
-		setUserConfig,
-	} = useContext( GlobalStylesContext );
-	const finalPath = ! blockName
-		? `styles.${ path }`
-		: `styles.blocks.${ blockName }.${ path }`;
-
-	const setStyle = ( newValue ) => {
-		setUserConfig( ( currentConfig ) => {
-			const newUserConfig = cloneDeep( currentConfig );
-			set(
-				newUserConfig,
-				finalPath,
-				getPresetVariableFromValue(
-					mergedConfig.settings,
-					blockName,
-					path,
-					newValue
-				)
-			);
-			return newUserConfig;
-		} );
-	};
-
-	let result;
-	switch ( source ) {
-		case 'all':
-			result = getValueFromVariable(
-				mergedConfig.settings,
-				blockName,
-				get( userConfig, finalPath ) ?? get( baseConfig, finalPath )
-			);
-			break;
-		case 'user':
-			result = getValueFromVariable(
-				mergedConfig.settings,
-				blockName,
-				get( userConfig, finalPath )
-			);
-			break;
-		case 'base':
-			result = getValueFromVariable(
-				baseConfig.settings,
-				blockName,
-				get( baseConfig, finalPath )
-			);
-			break;
-		default:
-			throw 'Unsupported source';
+		setThemeColors( newColors );
 	}
 
-	return [ result, setStyle ];
+	return window.__experimentalEnableColorRandomizer
+		? [ randomizeColors ]
+		: [];
 }
 
-const ROOT_BLOCK_SUPPORTS = [
-	'background',
-	'backgroundColor',
-	'color',
-	'linkColor',
-	'fontFamily',
-	'fontSize',
-	'fontStyle',
-	'fontWeight',
-	'lineHeight',
-	'textDecoration',
-	'textTransform',
-	'padding',
-];
+export function useStylesPreviewColors() {
+	const [ textColor = 'black' ] = useGlobalStyle( 'color.text' );
+	const [ backgroundColor = 'white' ] = useGlobalStyle( 'color.background' );
+	const [ headingColor = textColor ] = useGlobalStyle(
+		'elements.h1.color.text'
+	);
+	const [ linkColor = headingColor ] = useGlobalStyle(
+		'elements.link.color.text'
+	);
 
-export function getSupportedGlobalStylesPanels( name ) {
-	if ( ! name ) {
-		return ROOT_BLOCK_SUPPORTS;
-	}
+	const [ buttonBackgroundColor = linkColor ] = useGlobalStyle(
+		'elements.button.color.background'
+	);
+	const [ coreColors ] = useGlobalSetting( 'color.palette.core' );
+	const [ themeColors ] = useGlobalSetting( 'color.palette.theme' );
+	const [ customColors ] = useGlobalSetting( 'color.palette.custom' );
 
-	const blockType = getBlockType( name );
+	const paletteColors = ( themeColors ?? [] )
+		.concat( customColors ?? [] )
+		.concat( coreColors ?? [] );
 
-	if ( ! blockType ) {
-		return [];
-	}
+	const textColorObject = paletteColors.filter(
+		( { color } ) => color === textColor
+	);
+	const buttonBackgroundColorObject = paletteColors.filter(
+		( { color } ) => color === buttonBackgroundColor
+	);
 
-	const supportKeys = [];
-	Object.keys( STYLE_PROPERTY ).forEach( ( styleName ) => {
-		if ( ! STYLE_PROPERTY[ styleName ].support ) {
-			return;
-		}
+	const highlightedColors = textColorObject
+		.concat( buttonBackgroundColorObject )
+		.concat( paletteColors )
+		.filter(
+			// we exclude these background color because it is already visible in the preview.
+			( { color } ) => color !== backgroundColor
+		)
+		.slice( 0, 2 );
 
-		// Opting out means that, for certain support keys like background color,
-		// blocks have to explicitly set the support value false. If the key is
-		// unset, we still enable it.
-		if ( STYLE_PROPERTY[ styleName ].requiresOptOut ) {
-			if (
-				has(
-					blockType.supports,
-					STYLE_PROPERTY[ styleName ].support[ 0 ]
-				) &&
-				get(
-					blockType.supports,
-					STYLE_PROPERTY[ styleName ].support
-				) !== false
-			) {
-				return supportKeys.push( styleName );
-			}
-		}
-
-		if (
-			get(
-				blockType.supports,
-				STYLE_PROPERTY[ styleName ].support,
-				false
-			)
-		) {
-			return supportKeys.push( styleName );
-		}
-	} );
-
-	return supportKeys;
+	return {
+		paletteColors,
+		highlightedColors,
+	};
 }
 
-export function useColorsPerOrigin( name ) {
-	const [ userColors ] = useSetting( 'color.palette.user', name );
-	const [ themeColors ] = useSetting( 'color.palette.theme', name );
-	const [ coreColors ] = useSetting( 'color.palette.core', name );
-	return useMemo( () => {
-		const result = [];
-		if ( coreColors && coreColors.length ) {
-			result.push( {
-				name: __( 'Core' ),
-				colors: coreColors,
-			} );
-		}
-		if ( themeColors && themeColors.length ) {
-			result.push( {
-				name: __( 'Theme' ),
-				colors: themeColors,
-			} );
-		}
-		if ( userColors && userColors.length ) {
-			result.push( {
-				name: __( 'User' ),
-				colors: userColors,
-			} );
-		}
-		return result;
-	}, [ userColors, themeColors, coreColors ] );
-}
+export function useSupportedStyles( name, element ) {
+	const { supportedPanels } = useSelect(
+		( select ) => {
+			return {
+				supportedPanels: unlock(
+					select( blocksStore )
+				).getSupportedStyles( name, element ),
+			};
+		},
+		[ name, element ]
+	);
 
-export function useGradientsPerOrigin( name ) {
-	const [ userGradients ] = useSetting( 'color.gradients.user', name );
-	const [ themeGradients ] = useSetting( 'color.gradients.theme', name );
-	const [ coreGradients ] = useSetting( 'color.gradients.core', name );
-	return useMemo( () => {
-		const result = [];
-		if ( coreGradients && coreGradients.length ) {
-			result.push( {
-				name: __( 'Core' ),
-				gradients: coreGradients,
-			} );
-		}
-		if ( themeGradients && themeGradients.length ) {
-			result.push( {
-				name: __( 'Theme' ),
-				gradients: themeGradients,
-			} );
-		}
-		if ( userGradients && userGradients.length ) {
-			result.push( {
-				name: __( 'User' ),
-				gradients: userGradients,
-			} );
-		}
-		return result;
-	}, [ userGradients, themeGradients, coreGradients ] );
+	return supportedPanels;
 }

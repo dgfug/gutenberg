@@ -7,6 +7,7 @@ import { buttons as icon } from '@wordpress/icons';
 /**
  * Internal dependencies
  */
+import initBlock from '../utils/init-block';
 import deprecated from './deprecated';
 import transforms from './transforms';
 import edit from './edit';
@@ -20,6 +21,12 @@ export { metadata, name };
 export const settings = {
 	icon,
 	example: {
+		attributes: {
+			layout: {
+				type: 'flex',
+				justifyContent: 'center',
+			},
+		},
 		innerBlocks: [
 			{
 				name: 'core/button',
@@ -36,3 +43,5 @@ export const settings = {
 	edit,
 	save,
 };
+
+export const init = () => initBlock( { name, metadata, settings } );

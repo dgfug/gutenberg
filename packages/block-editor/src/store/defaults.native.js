@@ -6,17 +6,10 @@ import {
 	SETTINGS_DEFAULTS as SETTINGS,
 } from './defaults.js';
 
-const fontSizes = SETTINGS.fontSizes.map( ( fontSize ) => {
-	fontSize.sizePx = fontSize.size + 'px';
-	return fontSize;
-} );
-
 const SETTINGS_DEFAULTS = {
 	...SETTINGS,
-	fontSizes,
-	// FOR TESTING ONLY - Later, this will come from a REST API
-	// eslint-disable-next-line no-undef
-	__unstableGalleryWithImageBlocks: __DEV__,
+	// Don't add the default font sizes for standard themes
+	fontSizes: undefined,
 	alignWide: true,
 	supportsLayout: false,
 	__experimentalFeatures: {

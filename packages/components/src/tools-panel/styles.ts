@@ -1,6 +1,7 @@
 /**
  * External dependencies
  */
+import styled from '@emotion/styled';
 import { css } from '@emotion/react';
 
 /**
@@ -8,15 +9,20 @@ import { css } from '@emotion/react';
  */
 import {
 	StyledField as BaseControlField,
+	StyledHelp as BaseControlHelp,
 	Wrapper as BaseControlWrapper,
 } from '../base-control/styles/base-control-styles';
-import { COLORS, CONFIG } from '../utils';
-import { space } from '../ui/utils/space';
+import { LabelWrapper } from '../input-control/styles/input-control-styles';
+import { COLORS, CONFIG, rtl } from '../utils';
+import { space } from '../utils/space';
 
 const toolsPanelGrid = {
+	columns: ( columns: number ) => css`
+		grid-template-columns: ${ `repeat( ${ columns }, minmax(0, 1fr) )` };
+	`,
 	spacing: css`
 		column-gap: ${ space( 4 ) };
-		row-gap: ${ space( 6 ) };
+		row-gap: ${ space( 4 ) };
 	`,
 	item: {
 		fullWidth: css`
@@ -25,10 +31,11 @@ const toolsPanelGrid = {
 	},
 };
 
-export const ToolsPanel = css`
-	${ toolsPanelGrid.spacing };
+export const ToolsPanel = ( columns: number ) => css`
+	${ toolsPanelGrid.columns( columns ) }
+	${ toolsPanelGrid.spacing }
 
-	border-top: ${ CONFIG.borderWidth } solid ${ COLORS.gray[ 200 ] };
+	border-top: ${ CONFIG.borderWidth } solid ${ COLORS.gray[ 300 ] };
 	margin-top: -1px;
 	padding: ${ space( 4 ) };
 `;
@@ -43,7 +50,7 @@ export const ToolsPanelWithInnerWrapper = ( columns: number ) => {
 	return css`
 		> div:not( :first-of-type ) {
 			display: grid;
-			grid-template-columns: ${ `repeat( ${ columns }, 1fr )` };
+			${ toolsPanelGrid.columns( columns ) }
 			${ toolsPanelGrid.spacing }
 			${ toolsPanelGrid.item.fullWidth }
 		}
@@ -69,6 +76,7 @@ export const ToolsPanelHeader = css`
 	 */
 	.components-dropdown-menu {
 		margin: ${ space( -1 ) } 0;
+		line-height: 0;
 	}
 	&&&& .components-dropdown-menu__toggle {
 		padding: 0;
@@ -103,8 +111,30 @@ export const ToolsPanelItem = css`
 	&& ${ BaseControlWrapper } {
 		margin-bottom: 0;
 
-		${ BaseControlField } {
+		/**
+		 * To maintain proper spacing within a base control, the field's bottom
+		 * margin should only be removed when there is no help text included and
+		 * it is therefore the last-child.
+		 */
+		${ BaseControlField }:last-child {
 			margin-bottom: 0;
+		}
+	}
+
+	${ BaseControlHelp } {
+		margin-bottom: 0;
+	}
+
+	/**
+	 * Standardize InputControl and BaseControl labels with other labels when
+	 * inside ToolsPanel.
+	 *
+	 * This is a temporary fix until the different control components have their
+	 * labels normalized.
+	 */
+	&& ${ LabelWrapper } {
+		label {
+			line-height: 1.4em;
 		}
 	}
 `;
@@ -115,4 +145,30 @@ export const ToolsPanelItemPlaceholder = css`
 
 export const DropdownMenu = css`
 	min-width: 200px;
+`;
+
+export const ResetLabel = styled.span`
+	color: ${ COLORS.theme.accentDarker10 };
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 1.4;
+	${ rtl( { marginLeft: space( 3 ) } ) }
+	text-transform: uppercase;
+`;
+
+export const DefaultControlsItem = css`
+	color: ${ COLORS.gray[ 900 ] };
+
+	&&[aria-disabled='true'] {
+		color: ${ COLORS.gray[ 700 ] };
+		opacity: 1;
+
+		&:hover {
+			color: ${ COLORS.gray[ 700 ] };
+		}
+
+		${ ResetLabel } {
+			opacity: 0.3;
+		}
+	}
 `;

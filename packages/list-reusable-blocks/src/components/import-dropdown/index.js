@@ -1,11 +1,7 @@
 /**
- * External dependencies
- */
-import { flow } from 'lodash';
-
-/**
  * WordPress dependencies
  */
+import { pipe } from '@wordpress/compose';
 import { __ } from '@wordpress/i18n';
 import { Dropdown, Button } from '@wordpress/components';
 
@@ -17,10 +13,12 @@ import ImportForm from '../import-form';
 function ImportDropdown( { onUpload } ) {
 	return (
 		<Dropdown
-			position="bottom right"
+			popoverProps={ { placement: 'bottom-start' } }
 			contentClassName="list-reusable-blocks-import-dropdown__content"
 			renderToggle={ ( { isOpen, onToggle } ) => (
 				<Button
+					size="compact"
+					className="list-reusable-blocks-import-dropdown__button"
 					aria-expanded={ isOpen }
 					onClick={ onToggle }
 					variant="primary"
@@ -29,7 +27,7 @@ function ImportDropdown( { onUpload } ) {
 				</Button>
 			) }
 			renderContent={ ( { onClose } ) => (
-				<ImportForm onUpload={ flow( onClose, onUpload ) } />
+				<ImportForm onUpload={ pipe( onClose, onUpload ) } />
 			) }
 		/>
 	);

@@ -1,33 +1,40 @@
 /**
  * External dependencies
  */
-import classNames from 'classnames';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
  */
-import { getBlockSupport } from '@wordpress/blocks';
-import { Fragment, useEffect } from '@wordpress/element';
+import { useEffect, useRef } from '@wordpress/element';
 import {
 	BlockControls,
 	useInnerBlocksProps,
 	useBlockProps,
 	InspectorControls,
 	ContrastChecker,
-	PanelColorSettings,
 	withColors,
+	InnerBlocks,
+	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
+	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
+	store as blockEditorStore,
 } from '@wordpress/block-editor';
 import {
 	MenuGroup,
 	MenuItem,
-	PanelBody,
 	ToggleControl,
 	ToolbarDropdownMenu,
+	__experimentalToolsPanel as ToolsPanel,
+	__experimentalToolsPanelItem as ToolsPanelItem,
 } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { check } from '@wordpress/icons';
+import { useSelect } from '@wordpress/data';
 
-const ALLOWED_BLOCKS = [ 'core/social-link' ];
+/**
+ * Internal dependencies
+ */
+import { useToolsPanelDropdownMenuProps } from '../utils/hooks';
 
 const sizeOptions = [
 	{ name: __( 'Small' ), value: 'has-small-icon-size' },
@@ -36,17 +43,9 @@ const sizeOptions = [
 	{ name: __( 'Huge' ), value: 'has-huge-icon-size' },
 ];
 
-const getDefaultBlockLayout = ( blockTypeOrName ) => {
-	const layoutBlockSupportConfig = getBlockSupport(
-		blockTypeOrName,
-		'__experimentalLayout'
-	);
-	return layoutBlockSupportConfig?.default;
-};
-
 export function SocialLinksEdit( props ) {
 	const {
-		name,
+		clientId,
 		attributes,
 		iconBackgroundColor,
 		iconColor,
@@ -58,29 +57,47 @@ export function SocialLinksEdit( props ) {
 
 	const {
 		iconBackgroundColorValue,
+		customIconBackgroundColor,
 		iconColorValue,
 		openInNewTab,
+		showLabels,
 		size,
-		layout,
 	} = attributes;
-	const usedLayout = layout || getDefaultBlockLayout( name );
 
-	// Remove icon background color if logos only style selected.
-	const logosOnly =
-		attributes.className?.indexOf( 'is-style-logos-only' ) >= 0;
+	const hasSelectedChild = useSelect(
+		( select ) =>
+			select( blockEditorStore ).hasSelectedInnerBlock( clientId ),
+		[ clientId ]
+	);
+
+	const hasAnySelected = isSelected || hasSelectedChild;
+
+	const logosOnly = attributes.className?.includes( 'is-style-logos-only' );
+
+	const dropdownMenuProps = useToolsPanelDropdownMenuProps();
+
+	// Remove icon background color when logos only style is selected or
+	// restore it when any other style is selected.
+	const backgroundBackupRef = useRef( {} );
 	useEffect( () => {
 		if ( logosOnly ) {
+			backgroundBackupRef.current = {
+				iconBackgroundColor,
+				iconBackgroundColorValue,
+				customIconBackgroundColor,
+			};
 			setAttributes( {
 				iconBackgroundColor: undefined,
 				customIconBackgroundColor: undefined,
 				iconBackgroundColorValue: undefined,
 			} );
+		} else {
+			setAttributes( { ...backgroundBackupRef.current } );
 		}
-	}, [ logosOnly, setAttributes ] );
+	}, [ logosOnly ] );
 
 	const SocialPlaceholder = (
 		<li className="wp-block-social-links__social-placeholder">
-			<div className="wp-social-link"></div>
 			<div className="wp-block-social-links__social-placeholder-icons">
 				<div className="wp-social-link wp-social-link-twitter"></div>
 				<div className="wp-social-link wp-social-link-facebook"></div>
@@ -89,15 +106,10 @@ export function SocialLinksEdit( props ) {
 		</li>
 	);
 
-	const SelectedSocialPlaceholder = (
-		<li className="wp-block-social-links__social-prompt">
-			{ __( 'Click plus to add' ) }
-		</li>
-	);
-
 	// Fallback color values are used maintain selections in case switching
 	// themes and named colors in palette do not match.
-	const className = classNames( size, {
+	const className = clsx( size, {
+		'has-visible-labels': showLabels,
 		'has-icon-color': iconColor.color || iconColorValue,
 		'has-icon-background-color':
 			iconBackgroundColor.color || iconBackgroundColorValue,
@@ -105,19 +117,57 @@ export function SocialLinksEdit( props ) {
 
 	const blockProps = useBlockProps( { className } );
 	const innerBlocksProps = useInnerBlocksProps( blockProps, {
-		allowedBlocks: ALLOWED_BLOCKS,
-		placeholder: isSelected ? SelectedSocialPlaceholder : SocialPlaceholder,
+		placeholder: ! isSelected && SocialPlaceholder,
 		templateLock: false,
+		orientation: attributes.layout?.orientation ?? 'horizontal',
 		__experimentalAppenderTagName: 'li',
-		__experimentalLayout: usedLayout,
+		renderAppender: hasAnySelected && InnerBlocks.ButtonBlockAppender,
 	} );
 
 	const POPOVER_PROPS = {
 		position: 'bottom right',
 	};
 
+	const colorSettings = [
+		{
+			// Use custom attribute as fallback to prevent loss of named color selection when
+			// switching themes to a new theme that does not have a matching named color.
+			value: iconColor.color || iconColorValue,
+			onChange: ( colorValue ) => {
+				setIconColor( colorValue );
+				setAttributes( { iconColorValue: colorValue } );
+			},
+			label: __( 'Icon color' ),
+			resetAllFilter: () => {
+				setIconColor( undefined );
+				setAttributes( { iconColorValue: undefined } );
+			},
+		},
+	];
+
+	if ( ! logosOnly ) {
+		colorSettings.push( {
+			// Use custom attribute as fallback to prevent loss of named color selection when
+			// switching themes to a new theme that does not have a matching named color.
+			value: iconBackgroundColor.color || iconBackgroundColorValue,
+			onChange: ( colorValue ) => {
+				setIconBackgroundColor( colorValue );
+				setAttributes( {
+					iconBackgroundColorValue: colorValue,
+				} );
+			},
+			label: __( 'Icon background' ),
+			resetAllFilter: () => {
+				setIconBackgroundColor( undefined );
+				setAttributes( { iconBackgroundColorValue: undefined } );
+			},
+		} );
+	}
+
+	const colorGradientSettings = useMultipleOriginColorsAndGradients();
+
 	return (
-		<Fragment>
+		<>
 			<BlockControls group="other">
 				<ToolbarDropdownMenu
 					label={ __( 'Size' ) }
@@ -156,57 +206,90 @@ export function SocialLinksEdit( props ) {
 				</ToolbarDropdownMenu>
 			</BlockControls>
 			<InspectorControls>
-				<PanelBody title={ __( 'Link settings' ) }>
-					<ToggleControl
+				<ToolsPanel
+					label={ __( 'Settings' ) }
+					resetAll={ () => {
+						setAttributes( {
+							openInNewTab: false,
+							showLabels: false,
+						} );
+					} }
+					dropdownMenuProps={ dropdownMenuProps }
+				>
+					<ToolsPanelItem
+						isShownByDefault
 						label={ __( 'Open links in new tab' ) }
-						checked={ openInNewTab }
-						onChange={ () =>
-							setAttributes( { openInNewTab: ! openInNewTab } )
+						hasValue={ () => !! openInNewTab }
+						onDeselect={ () =>
+							setAttributes( { openInNewTab: false } )
 						}
-					/>
-				</PanelBody>
-				<PanelColorSettings
-					__experimentalHasMultipleOrigins
-					title={ __( 'Color' ) }
-					colorSettings={ [
-						{
-							// Use custom attribute as fallback to prevent loss of named color selection when
-							// switching themes to a new theme that does not have a matching named color.
-							value: iconColor.color || iconColorValue,
-							onChange: ( colorValue ) => {
-								setIconColor( colorValue );
-								setAttributes( { iconColorValue: colorValue } );
-							},
-							label: __( 'Icon color' ),
-						},
-						! logosOnly && {
-							// Use custom attribute as fallback to prevent loss of named color selection when
-							// switching themes to a new theme that does not have a matching named color.
-							value:
-								iconBackgroundColor.color ||
-								iconBackgroundColorValue,
-							onChange: ( colorValue ) => {
-								setIconBackgroundColor( colorValue );
+					>
+						<ToggleControl
+							__nextHasNoMarginBottom
+							label={ __( 'Open links in new tab' ) }
+							checked={ openInNewTab }
+							onChange={ () =>
 								setAttributes( {
-									iconBackgroundColorValue: colorValue,
-								} );
-							},
-							label: __( 'Icon background color' ),
-						},
-					] }
-				/>
-				{ ! logosOnly && (
-					<ContrastChecker
-						{ ...{
-							textColor: iconColorValue,
-							backgroundColor: iconBackgroundColorValue,
-						} }
-						isLargeText={ false }
-					/>
-				) }
+									openInNewTab: ! openInNewTab,
+								} )
+							}
+						/>
+					</ToolsPanelItem>
+					<ToolsPanelItem
+						isShownByDefault
+						label={ __( 'Show text' ) }
+						hasValue={ () => !! showLabels }
+						onDeselect={ () =>
+							setAttributes( { showLabels: false } )
+						}
+					>
+						<ToggleControl
+							__nextHasNoMarginBottom
+							label={ __( 'Show text' ) }
+							checked={ showLabels }
+							onChange={ () =>
+								setAttributes( { showLabels: ! showLabels } )
+							}
+						/>
+					</ToolsPanelItem>
+				</ToolsPanel>
 			</InspectorControls>
+			{ colorGradientSettings.hasColorsOrGradients && (
+				<InspectorControls group="color">
+					{ colorSettings.map(
+						( { onChange, label, value, resetAllFilter } ) => (
+							<ColorGradientSettingsDropdown
+								key={ `social-links-color-${ label }` }
+								__experimentalIsRenderedInSidebar
+								settings={ [
+									{
+										colorValue: value,
+										label,
+										onColorChange: onChange,
+										isShownByDefault: true,
+										resetAllFilter,
+										enableAlpha: true,
+										clearable: true,
+									},
+								] }
+								panelId={ clientId }
+								{ ...colorGradientSettings }
+							/>
+						)
+					) }
+					{ ! logosOnly && (
+						<ContrastChecker
+							{ ...{
+								textColor: iconColorValue,
+								backgroundColor: iconBackgroundColorValue,
+							} }
+							isLargeText={ false }
+						/>
+					) }
+				</InspectorControls>
+			) }
 			<ul { ...innerBlocksProps } />
-		</Fragment>
+		</>
 	);
 }
 

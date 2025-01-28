@@ -1,36 +1,33 @@
 /**
- * External dependencies
- */
-import { every } from 'lodash';
-
-/**
  * Internal dependencies
  */
 import {
-	isURL,
-	isEmail,
-	getProtocol,
-	isValidProtocol,
-	getAuthority,
-	isValidAuthority,
-	getPath,
-	isValidPath,
-	getQueryString,
-	buildQueryString,
-	isValidQueryString,
-	getFragment,
-	isValidFragment,
 	addQueryArgs,
-	getQueryArg,
-	hasQueryArg,
-	removeQueryArgs,
-	prependHTTP,
-	safeDecodeURI,
-	filterURLForDisplay,
+	buildQueryString,
 	cleanForSlug,
-	getQueryArgs,
+	filterURLForDisplay,
+	getAuthority,
 	getFilename,
+	getFragment,
+	getPath,
+	getProtocol,
+	getQueryArg,
+	getQueryArgs,
+	getQueryString,
+	hasQueryArg,
+	isEmail,
+	isURL,
+	isPhoneNumber,
+	isValidAuthority,
+	isValidFragment,
+	isValidPath,
+	isValidProtocol,
+	isValidQueryString,
 	normalizePath,
+	prependHTTP,
+	prependHTTPS,
+	removeQueryArgs,
+	safeDecodeURI,
 } from '../';
 import wptData from './fixtures/wpt-data';
 
@@ -44,35 +41,83 @@ describe( 'isURL', () => {
 } );
 
 describe( 'isEmail', () => {
-	it( 'returns true when given things that look like an email', () => {
-		const emails = [
-			'simple@wordpress.org',
-			'very.common@wordpress.org',
-			'disposable.style.email.with+symbol@wordpress.org',
-			'other.email-with-hyphen@wordpress.org',
-			'fully-qualified-domain@wordpress.org',
-			'user.name+tag+sorting@wordpress.org',
-			'x@wordpress.org',
-			'wordpress-indeed@strange-wordpress.org',
-			'wordpress@s.wordpress',
-		];
+	it.each( [
+		'simple@wordpress.org',
+		'very.common@wordpress.org',
+		'disposable.style.email.with+symbol@wordpress.org',
+		'other.email-with-hyphen@wordpress.org',
+		'fully-qualified-domain@wordpress.org',
+		'user.name+tag+sorting@wordpress.org',
+		'x@wordpress.org',
+		'wordpress-indeed@strange-wordpress.org',
+		'wordpress@s.wordpress',
+		'1234567890123456789012345678901234567890123456789012345678901234+x@wordpress.org',
+	] )(
+		'returns true when given things that look like an email: %s',
+		( email ) => {
+			expect( isEmail( email ) ).toBe( true );
+		}
+	);
 
-		expect( every( emails, isEmail ) ).toBe( true );
-	} );
+	it.each( [
+		'Abc.wordpress.org',
+		'A@b@c@wordpress.org',
+		'a"b(c)d,e:f;g<h>i[jk]l@wordpress.org',
+		'just"not"right@wordpress.org',
+		'this is"notallowed@wordpress.org',
+		'this still"not\\allowed@wordpress.org',
+	] )(
+		"returns false when given things that don't look like an email: %s",
+		( email ) => {
+			expect( isEmail( email ) ).toBe( false );
+		}
+	);
+} );
 
-	it( "returns false when given things that don't look like an email", () => {
-		const emails = [
-			'Abc.wordpress.org',
-			'A@b@c@wordpress.org',
-			'a"b(c)d,e:f;g<h>i[jk]l@wordpress.org',
-			'just"not"right@wordpress.org',
-			'this is"notallowed@wordpress.org',
-			'this still"not\\allowed@wordpress.org',
-			'1234567890123456789012345678901234567890123456789012345678901234+x@wordpress.org',
-		];
+describe( 'isPhoneNumber', () => {
+	it.each( [
+		'+1 (555) 123-4567',
+		'(555) 123-4567',
+		'555-123-4567',
+		'5551234567',
+		'+91 987 654 3210',
+		'123-456-7890',
+		'(123) 456-7890',
+		'123 456 7890',
+		'123.456.7890',
+		'+1 123 456 7890',
+		'1234567890',
+		'+44 791 112 3456',
+		'(123) 4567',
+		'+1 (123) 45678901',
+		'12-34-56',
+		'123456789012345',
+		'+12 3456789012345',
+		'tel:+1-123-456-7890',
+	] )(
+		'returns true when given things that look like a phone number: %s',
+		( phoneNumber ) => {
+			expect( isPhoneNumber( phoneNumber ) ).toBe( true );
+		}
+	);
 
-		expect( every( emails, isEmail ) ).toBe( false );
-	} );
+	it.each( [
+		'not a phone number',
+		'123',
+		'1234',
+		'12345',
+		'+91 123',
+		'abc-def-ghij',
+		'a123456789b',
+		'12-34-5',
+		'tel:911',
+		'tel:12345',
+	] )(
+		"returns false when given things that don't look like a phone number: %s",
+		( phoneNumber ) => {
+			expect( isPhoneNumber( phoneNumber ) ).toBe( false );
+		}
+	);
 } );
 
 describe( 'getProtocol', () => {
@@ -256,23 +301,20 @@ describe( 'isValidPath', () => {
 } );
 
 describe( 'getFilename', () => {
-	it( 'returns the filename part of the URL', () => {
-		expect( getFilename( 'https://wordpress.org/image.jpg' ) ).toBe(
-			'image.jpg'
-		);
-		expect(
-			getFilename( 'https://wordpress.org/image.jpg?query=test' )
-		).toBe( 'image.jpg' );
-		expect( getFilename( 'https://wordpress.org/image.jpg#anchor' ) ).toBe(
-			'image.jpg'
-		);
-		expect(
-			getFilename( 'http://localhost:8080/a/path/to/an/image.jpg' )
-		).toBe( 'image.jpg' );
-		expect( getFilename( '/path/to/an/image.jpg' ) ).toBe( 'image.jpg' );
-		expect( getFilename( 'path/to/an/image.jpg' ) ).toBe( 'image.jpg' );
-		expect( getFilename( '/image.jpg' ) ).toBe( 'image.jpg' );
-		expect( getFilename( 'image.jpg' ) ).toBe( 'image.jpg' );
+	it.each( [
+		[ 'https://wordpress.org/image.jpg', 'image.jpg' ],
+		[ 'https://wordpress.org/image.jpg?query=test', 'image.jpg' ],
+		[ 'https://wordpress.org/image.jpg#anchor', 'image.jpg' ],
+		[ 'http://localhost:8080/a/path/to/an/image.jpg', 'image.jpg' ],
+		[ '/path/to/an/image.jpg', 'image.jpg' ],
+		[ 'path/to/an/image.jpg', 'image.jpg' ],
+		[ '/image.jpg', 'image.jpg' ],
+		[ 'https://wordpress.org/file.pdf', 'file.pdf' ],
+		[ 'https://wordpress.org/image.webp?query=test', 'image.webp' ],
+		[ 'https://wordpress.org/video.mov#anchor', 'video.mov' ],
+		[ 'http://localhost:8080/a/path/to/audio.mp3', 'audio.mp3' ],
+	] )( 'returns the filename part of the URL: %s', ( url, filename ) => {
+		expect( getFilename( url ) ).toBe( filename );
 	} );
 
 	it( 'returns undefined when the provided value does not contain a filename', () => {
@@ -288,6 +330,8 @@ describe( 'getFilename', () => {
 		);
 		expect( getFilename( 'a/path/' ) ).toBe( undefined );
 		expect( getFilename( '/' ) ).toBe( undefined );
+		expect( getFilename( undefined ) ).toBe( undefined );
+		expect( getFilename( null ) ).toBe( undefined );
 	} );
 } );
 
@@ -726,6 +770,16 @@ describe( 'getQueryArgs', () => {
 				)
 			).toEqual( data );
 		} );
+
+		it( 'should not blow up on malformed params', () => {
+			const url = 'https://andalouses.example/beach?foo=bar&baz=%E0%A4%A';
+
+			expect( () => getQueryArgs( url ) ).not.toThrow();
+			expect( getQueryArgs( url ) ).toEqual( {
+				baz: '%E0%A4%A',
+				foo: 'bar',
+			} );
+		} );
 	} );
 } );
 
@@ -742,7 +796,7 @@ describe( 'getQueryArg', () => {
 		expect( getQueryArg( url, 'baz' ) ).toBeUndefined();
 	} );
 
-	it( 'should get the value of an arry query arg', () => {
+	it( 'should get the value of an array query arg', () => {
 		const url = 'https://andalouses.example/beach?foo[]=bar&foo[]=baz';
 
 		expect( getQueryArg( url, 'foo' ) ).toEqual( [ 'bar', 'baz' ] );
@@ -769,7 +823,7 @@ describe( 'hasQueryArg', () => {
 		expect( hasQueryArg( url, 'baz' ) ).toBeFalsy();
 	} );
 
-	it( 'should return true for an arry query arg', () => {
+	it( 'should return true for an array query arg', () => {
 		const url = 'https://andalouses.example/beach?foo[]=bar&foo[]=baz';
 
 		expect( hasQueryArg( url, 'foo' ) ).toBeTruthy();
@@ -883,6 +937,92 @@ describe( 'prependHTTP', () => {
 	} );
 } );
 
+describe( 'prependHTTPS', () => {
+	it( 'should prepend https to a domain', () => {
+		const url = 'wordpress.org';
+
+		expect( prependHTTPS( url ) ).toBe( 'https://' + url );
+	} );
+
+	it( 'should not prepend https to an email', () => {
+		const url = 'foo@wordpress.org';
+
+		expect( prependHTTPS( url ) ).toBe( url );
+	} );
+
+	it( 'should not prepend https to an absolute URL', () => {
+		const url = '/wordpress';
+
+		expect( prependHTTPS( url ) ).toBe( url );
+	} );
+
+	it( 'should not prepend https to a relative URL', () => {
+		const url = './wordpress';
+
+		expect( prependHTTPS( url ) ).toBe( url );
+	} );
+
+	it( 'should not prepend https to an anchor URL', () => {
+		const url = '#wordpress';
+
+		expect( prependHTTPS( url ) ).toBe( url );
+	} );
+
+	it( 'should not prepend https to a URL that already has https', () => {
+		const url = 'https://wordpress.org';
+
+		expect( prependHTTPS( url ) ).toBe( url );
+	} );
+
+	it( 'should not prepend https to a URL that already has http', () => {
+		const url = 'http://wordpress.org';
+
+		expect( prependHTTPS( url ) ).toBe( url );
+	} );
+
+	it( 'should not prepend https to a URL that already has ftp', () => {
+		const url = 'ftp://wordpress.org';
+
+		expect( prependHTTPS( url ) ).toBe( url );
+	} );
+
+	it( 'should not prepend https to a URL that already has mailto', () => {
+		const url = 'mailto:foo@wordpress.org';
+
+		expect( prependHTTPS( url ) ).toBe( url );
+	} );
+
+	it( 'should remove leading whitespace before prepending HTTPs', () => {
+		const url = ' wordpress.org';
+
+		expect( prependHTTPS( url ) ).toBe( 'https://wordpress.org' );
+	} );
+
+	it( 'should not have trailing whitespaces', () => {
+		const url = 'wordpress.org ';
+
+		expect( prependHTTPS( url ) ).toBe( 'https://wordpress.org' );
+	} );
+} );
+
+it( 'should prepend https to a domain with an anchor', () => {
+	const url = 'wordpress.org#something';
+
+	expect( prependHTTPS( url ) ).toBe( 'https://' + url );
+} );
+
+it( 'should prepend https to a domain with path', () => {
+	const url = 'wordpress.org/some/thing';
+
+	expect( prependHTTPS( url ) ).toBe( 'https://' + url );
+} );
+
+it( 'should prepend https to a domain with query arguments', () => {
+	const url = 'wordpress.org?foo=bar';
+
+	expect( prependHTTPS( url ) ).toBe( 'https://' + url );
+} );
+
 describe( 'safeDecodeURI', () => {
 	it( 'should decode URI if formed well', () => {
 		const encoded = 'https://mozilla.org/?x=%D1%88%D0%B5%D0%BB%D0%BB%D1%8B';
@@ -899,11 +1039,23 @@ describe( 'safeDecodeURI', () => {
 } );
 
 describe( 'filterURLForDisplay', () => {
+	it( 'should return an empty string if the url is empty or falsy', () => {
+		let url = filterURLForDisplay( '' );
+		expect( url ).toBe( '' );
+		url = filterURLForDisplay( null );
+		expect( url ).toBe( '' );
+	} );
 	it( 'should remove protocol', () => {
 		let url = filterURLForDisplay( 'http://wordpress.org' );
 		expect( url ).toBe( 'wordpress.org' );
 		url = filterURLForDisplay( 'https://wordpress.org' );
 		expect( url ).toBe( 'wordpress.org' );
+		url = filterURLForDisplay( 'file:///folder/file.txt' );
+		expect( url ).toBe( '/folder/file.txt' );
+		url = filterURLForDisplay( 'tel:0123456789' );
+		expect( url ).toBe( '0123456789' );
+		url = filterURLForDisplay( 'blob:data' );
+		expect( url ).toBe( 'data' );
 	} );
 	it( 'should remove www subdomain', () => {
 		const url = filterURLForDisplay( 'http://www.wordpress.org' );
@@ -974,16 +1126,43 @@ describe( 'filterURLForDisplay', () => {
 } );
 
 describe( 'cleanForSlug', () => {
-	it( 'should return string prepared for use as url slug', () => {
+	it( 'Should return string prepared for use as url slug', () => {
 		expect( cleanForSlug( '/Is th@t Déjà_vu? ' ) ).toBe( 'is-tht-deja_vu' );
 	} );
 
-	it( 'should return an empty string for missing argument', () => {
+	it( 'Should return an empty string for missing argument', () => {
 		expect( cleanForSlug() ).toBe( '' );
 	} );
 
-	it( 'should return an empty string for falsy argument', () => {
+	it( 'Should return an empty string for falsy argument', () => {
 		expect( cleanForSlug( null ) ).toBe( '' );
+	} );
+
+	it( 'Should not allow characters used internally in rich-text', () => {
+		//The last space is an object replacement character
+		expect( cleanForSlug( 'the long cat￼' ) ).toBe( 'the-long-cat' );
+	} );
+
+	it( 'Creates a slug for languages that use multibyte encodings', () => {
+		expect( cleanForSlug( '新荣记 ' ) ).toBe( '新荣记' );
+		expect( cleanForSlug( '私のテンプレートパーツのテスト ' ) ).toBe(
+			'私のテンプレートパーツのテスト'
+		);
+		expect( cleanForSlug( 'ქართული ნაწილი' ) ).toBe( 'ქართული-ნაწილი' );
+		expect( cleanForSlug( 'Καλημέρα Κόσμε' ) ).toBe( 'καλημέρα-κόσμε' );
+		expect( cleanForSlug( '안녕하세요 ' ) ).toBe( '안녕하세요' );
+		expect( cleanForSlug( '繁体字 ' ) ).toBe( '繁体字' );
+	} );
+
+	it( 'Should trim multiple leading and trailing dashes', () => {
+		expect( cleanForSlug( '  -Is th@t Déjà_vu- 	' ) ).toBe(
+			'is-tht-deja_vu'
+		);
+	} );
+
+	it( 'Should replace multiple hyphens with a single one', () => {
+		expect( cleanForSlug( 'the long - cat' ) ).toBe( 'the-long-cat' );
+		expect( cleanForSlug( 'the----long---cat' ) ).toBe( 'the-long-cat' );
 	} );
 } );
 
@@ -1007,5 +1186,10 @@ describe( 'normalizePath', () => {
 		expect( bac ).toBe( acb );
 		expect( acb ).toBe( cba );
 		expect( cba ).toBe( cab );
+	} );
+
+	it( 'sorts urldecoded values and returns property urlencoded query string', () => {
+		const ab = normalizePath( '/foo/bar?a%2Ca=5,5&a,b=1,1' );
+		expect( ab ).toBe( '/foo/bar?a%2Ca=5%2C5&a%2Cb=1%2C1' );
 	} );
 } );

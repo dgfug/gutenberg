@@ -1,19 +1,16 @@
 /**
- * External dependencies
- */
-import { last, noop } from 'lodash';
-
-/**
  * WordPress dependencies
  */
 import { useEffect, useRef } from '@wordpress/element';
-import { useRegistry } from '@wordpress/data';
+import { useRegistry, useSelect } from '@wordpress/data';
 import { cloneBlock } from '@wordpress/blocks';
 
 /**
  * Internal dependencies
  */
 import { store as blockEditorStore } from '../../store';
+
+const noop = () => {};
 
 /**
  * A function to call when the block value has been updated in the block-editor
@@ -36,7 +33,7 @@ import { store as blockEditorStore } from '../../store';
  * the template part in the block editor back to the entity and vice-versa.
  *
  * Here are some of its basic functions:
- * - Initalizes the block-editor store for the given clientID to the blocks
+ * - Initializes the block-editor store for the given clientID to the blocks
  *   given via props.
  * - Adds incoming changes (like undo) to the block-editor store.
  * - Adds outgoing changes (like editing content) to the controlling entity,
@@ -52,7 +49,7 @@ import { store as blockEditorStore } from '../../store';
  *                                        root controller rather than an inner block
  *                                        controller.
  * @param {Object[]}      props.value     The control value for the blocks. This value
- *                                        is used to initalize the block-editor store
+ *                                        is used to initialize the block-editor store
  *                                        and for resetting the blocks to incoming
  *                                        changes like undo.
  * @param {Object}        props.selection The selection state responsible to restore the selection on undo/redo.
@@ -82,10 +79,20 @@ export default function useBlockSync( {
 		setHasControlledInnerBlocks,
 		__unstableMarkNextChangeAsNotPersistent,
 	} = registry.dispatch( blockEditorStore );
-	const { getBlockName, getBlocks } = registry.select( blockEditorStore );
+	const { getBlockName, getBlocks, getSelectionStart, getSelectionEnd } =
+		registry.select( blockEditorStore );
+	const isControlled = useSelect(
+		( select ) => {
+			return (
+				! clientId ||
+				select( blockEditorStore ).areInnerBlocksControlled( clientId )
+			);
+		},
+		[ clientId ]
+	);
 
-	const pendingChanges = useRef( { incoming: null, outgoing: [] } );
-	const subscribed = useRef( false );
+	const pendingChangesRef = useRef( { incoming: null, outgoing: [] } );
+	const subscribedRef = useRef( false );
 
 	const setControlledBlocks = () => {
 		if ( ! controlledBlocks ) {
@@ -97,20 +104,39 @@ export default function useBlockSync( {
 		// and so it would already be persisted.
 		__unstableMarkNextChangeAsNotPersistent();
 		if ( clientId ) {
-			setHasControlledInnerBlocks( clientId, true );
-			__unstableMarkNextChangeAsNotPersistent();
-			const storeBlocks = controlledBlocks.map( ( block ) =>
-				cloneBlock( block )
-			);
-			if ( subscribed.current ) {
-				pendingChanges.current.incoming = storeBlocks;
-			}
-			replaceInnerBlocks( clientId, storeBlocks );
+			// It is important to batch here because otherwise,
+			// as soon as `setHasControlledInnerBlocks` is called
+			// the effect to restore might be triggered
+			// before the actual blocks get set properly in state.
+			registry.batch( () => {
+				setHasControlledInnerBlocks( clientId, true );
+				const storeBlocks = controlledBlocks.map( ( block ) =>
+					cloneBlock( block )
+				);
+				if ( subscribedRef.current ) {
+					pendingChangesRef.current.incoming = storeBlocks;
+				}
+				__unstableMarkNextChangeAsNotPersistent();
+				replaceInnerBlocks( clientId, storeBlocks );
+			} );
 		} else {
-			if ( subscribed.current ) {
-				pendingChanges.current.incoming = controlledBlocks;
+			if ( subscribedRef.current ) {
+				pendingChangesRef.current.incoming = controlledBlocks;
 			}
 			resetBlocks( controlledBlocks );
+		}
+	};
+
+	// Clean up the changes made by setControlledBlocks() when the component
+	// containing useBlockSync() unmounts.
+	const unsetControlledBlocks = () => {
+		__unstableMarkNextChangeAsNotPersistent();
+		if ( clientId ) {
+			setHasControlledInnerBlocks( clientId, false );
+			__unstableMarkNextChangeAsNotPersistent();
+			replaceInnerBlocks( clientId, [] );
+		} else {
+			resetBlocks( [] );
 		}
 	};
 
@@ -127,7 +153,7 @@ export default function useBlockSync( {
 
 	// Determine if blocks need to be reset when they change.
 	useEffect( () => {
-		if ( pendingChanges.current.outgoing.includes( controlledBlocks ) ) {
+		if ( pendingChangesRef.current.outgoing.includes( controlledBlocks ) ) {
 			// Skip block reset if the value matches expected outbound sync
 			// triggered by this component by a preceding change detection.
 			// Only skip if the value matches expectation, since a reset should
@@ -135,16 +161,18 @@ export default function useBlockSync( {
 			// to allow that the consumer may apply modifications to reflect
 			// back on the editor.
 			if (
-				last( pendingChanges.current.outgoing ) === controlledBlocks
+				pendingChangesRef.current.outgoing[
+					pendingChangesRef.current.outgoing.length - 1
+				] === controlledBlocks
 			) {
-				pendingChanges.current.outgoing = [];
+				pendingChangesRef.current.outgoing = [];
 			}
 		} else if ( getBlocks( clientId ) !== controlledBlocks ) {
 			// Reset changing value in all other cases than the sync described
 			// above. Since this can be reached in an update following an out-
 			// bound sync, unset the outbound value to avoid considering it in
 			// subsequent renders.
-			pendingChanges.current.outgoing = [];
+			pendingChangesRef.current.outgoing = [];
 			setControlledBlocks();
 
 			if ( controlledSelection ) {
@@ -157,20 +185,36 @@ export default function useBlockSync( {
 		}
 	}, [ controlledBlocks, clientId ] );
 
+	const isMountedRef = useRef( false );
+
+	useEffect( () => {
+		// On mount, controlled blocks are already set in the effect above.
+		if ( ! isMountedRef.current ) {
+			isMountedRef.current = true;
+			return;
+		}
+
+		// When the block becomes uncontrolled, it means its inner state has been reset
+		// we need to take the blocks again from the external value property.
+		if ( ! isControlled ) {
+			pendingChangesRef.current.outgoing = [];
+			setControlledBlocks();
+		}
+	}, [ isControlled ] );
+
 	useEffect( () => {
 		const {
-			getSelectionStart,
-			getSelectionEnd,
 			getSelectedBlocksInitialCaretPosition,
 			isLastBlockChangePersistent,
 			__unstableIsLastBlockChangeIgnored,
+			areInnerBlocksControlled,
 		} = registry.select( blockEditorStore );
 
 		let blocks = getBlocks( clientId );
 		let isPersistent = isLastBlockChangePersistent();
 		let previousAreBlocksDifferent = false;
 
-		subscribed.current = true;
+		subscribedRef.current = true;
 		const unsubscribe = registry.subscribe( () => {
 			// Sometimes, when changing block lists, lingering subscriptions
 			// might trigger before they are cleaned up. If the block for which
@@ -179,21 +223,30 @@ export default function useBlockSync( {
 			// the subscription is triggering for a block (`clientId !== null`)
 			// and its block name can't be found because it's not on the list.
 			// (`getBlockName( clientId ) === null`).
-			if ( clientId !== null && getBlockName( clientId ) === null )
+			if ( clientId !== null && getBlockName( clientId ) === null ) {
 				return;
+			}
+
+			// When RESET_BLOCKS on parent blocks get called, the controlled blocks
+			// can reset to uncontrolled, in these situations, it means we need to populate
+			// the blocks again from the external blocks (the value property here)
+			// and we should stop triggering onChange
+			const isStillControlled =
+				! clientId || areInnerBlocksControlled( clientId );
+			if ( ! isStillControlled ) {
+				return;
+			}
 
 			const newIsPersistent = isLastBlockChangePersistent();
-
 			const newBlocks = getBlocks( clientId );
 			const areBlocksDifferent = newBlocks !== blocks;
 			blocks = newBlocks;
-
 			if (
 				areBlocksDifferent &&
-				( pendingChanges.current.incoming ||
+				( pendingChangesRef.current.incoming ||
 					__unstableIsLastBlockChangeIgnored() )
 			) {
-				pendingChanges.current.incoming = null;
+				pendingChangesRef.current.incoming = null;
 				isPersistent = newIsPersistent;
 				return;
 			}
@@ -213,7 +266,7 @@ export default function useBlockSync( {
 				// We need to be aware that it was caused by an outgoing change
 				// so that we do not treat it as an incoming change later on,
 				// which would cause a block reset.
-				pendingChanges.current.outgoing.push( blocks );
+				pendingChangesRef.current.outgoing.push( blocks );
 
 				// Inform the controlling entity that changes have been made to
 				// the block-editor store they should be aware about.
@@ -224,13 +277,23 @@ export default function useBlockSync( {
 					selection: {
 						selectionStart: getSelectionStart(),
 						selectionEnd: getSelectionEnd(),
-						initialPosition: getSelectedBlocksInitialCaretPosition(),
+						initialPosition:
+							getSelectedBlocksInitialCaretPosition(),
 					},
 				} );
 			}
 			previousAreBlocksDifferent = areBlocksDifferent;
-		} );
+		}, blockEditorStore );
 
-		return () => unsubscribe();
+		return () => {
+			subscribedRef.current = false;
+			unsubscribe();
+		};
 	}, [ registry, clientId ] );
+
+	useEffect( () => {
+		return () => {
+			unsetControlledBlocks();
+		};
+	}, [] );
 }

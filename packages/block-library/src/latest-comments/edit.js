@@ -4,12 +4,18 @@
 import { InspectorControls, useBlockProps } from '@wordpress/block-editor';
 import {
 	Disabled,
-	PanelBody,
 	RangeControl,
 	ToggleControl,
+	__experimentalToolsPanel as ToolsPanel,
+	__experimentalToolsPanelItem as ToolsPanelItem,
 } from '@wordpress/components';
 import ServerSideRender from '@wordpress/server-side-render';
 import { __ } from '@wordpress/i18n';
+
+/**
+ * Internal dependencies
+ */
+import { useToolsPanelDropdownMenuProps } from '../utils/hooks';
 
 /**
  * Minimum number of comments a user can show using this block.
@@ -25,56 +31,119 @@ const MIN_COMMENTS = 1;
 const MAX_COMMENTS = 100;
 
 export default function LatestComments( { attributes, setAttributes } ) {
-	const {
-		commentsToShow,
-		displayAvatar,
-		displayDate,
-		displayExcerpt,
-	} = attributes;
+	const { commentsToShow, displayAvatar, displayDate, displayExcerpt } =
+		attributes;
+
+	const serverSideAttributes = {
+		...attributes,
+		style: {
+			...attributes?.style,
+			spacing: undefined,
+		},
+	};
+
+	const dropdownMenuProps = useToolsPanelDropdownMenuProps();
 
 	return (
 		<div { ...useBlockProps() }>
 			<InspectorControls>
-				<PanelBody title={ __( 'Latest comments settings' ) }>
-					<ToggleControl
+				<ToolsPanel
+					label={ __( 'Settings' ) }
+					resetAll={ () => {
+						setAttributes( {
+							commentsToShow: 5,
+							displayAvatar: true,
+							displayDate: true,
+							displayExcerpt: true,
+						} );
+					} }
+					dropdownMenuProps={ dropdownMenuProps }
+				>
+					<ToolsPanelItem
+						hasValue={ () => ! displayAvatar }
 						label={ __( 'Display avatar' ) }
-						checked={ displayAvatar }
-						onChange={ () =>
-							setAttributes( { displayAvatar: ! displayAvatar } )
+						onDeselect={ () =>
+							setAttributes( { displayAvatar: true } )
 						}
-					/>
-					<ToggleControl
+						isShownByDefault
+					>
+						<ToggleControl
+							__nextHasNoMarginBottom
+							label={ __( 'Display avatar' ) }
+							checked={ displayAvatar }
+							onChange={ () =>
+								setAttributes( {
+									displayAvatar: ! displayAvatar,
+								} )
+							}
+						/>
+					</ToolsPanelItem>
+
+					<ToolsPanelItem
+						hasValue={ () => ! displayDate }
 						label={ __( 'Display date' ) }
-						checked={ displayDate }
-						onChange={ () =>
-							setAttributes( { displayDate: ! displayDate } )
+						onDeselect={ () =>
+							setAttributes( { displayDate: true } )
 						}
-					/>
-					<ToggleControl
+						isShownByDefault
+					>
+						<ToggleControl
+							__nextHasNoMarginBottom
+							label={ __( 'Display date' ) }
+							checked={ displayDate }
+							onChange={ () =>
+								setAttributes( { displayDate: ! displayDate } )
+							}
+						/>
+					</ToolsPanelItem>
+
+					<ToolsPanelItem
+						hasValue={ () => ! displayExcerpt }
 						label={ __( 'Display excerpt' ) }
-						checked={ displayExcerpt }
-						onChange={ () =>
-							setAttributes( {
-								displayExcerpt: ! displayExcerpt,
-							} )
+						onDeselect={ () =>
+							setAttributes( { displayExcerpt: true } )
 						}
-					/>
-					<RangeControl
+						isShownByDefault
+					>
+						<ToggleControl
+							__nextHasNoMarginBottom
+							label={ __( 'Display excerpt' ) }
+							checked={ displayExcerpt }
+							onChange={ () =>
+								setAttributes( {
+									displayExcerpt: ! displayExcerpt,
+								} )
+							}
+						/>
+					</ToolsPanelItem>
+
+					<ToolsPanelItem
+						hasValue={ () => commentsToShow !== 5 }
 						label={ __( 'Number of comments' ) }
-						value={ commentsToShow }
-						onChange={ ( value ) =>
-							setAttributes( { commentsToShow: value } )
+						onDeselect={ () =>
+							setAttributes( { commentsToShow: 5 } )
 						}
-						min={ MIN_COMMENTS }
-						max={ MAX_COMMENTS }
-						required
-					/>
-				</PanelBody>
+						isShownByDefault
+					>
+						<RangeControl
+							__nextHasNoMarginBottom
+							__next40pxDefaultSize
+							label={ __( 'Number of comments' ) }
+							value={ commentsToShow }
+							onChange={ ( value ) =>
+								setAttributes( { commentsToShow: value } )
+							}
+							min={ MIN_COMMENTS }
+							max={ MAX_COMMENTS }
+							required
+						/>
+					</ToolsPanelItem>
+				</ToolsPanel>
 			</InspectorControls>
 			<Disabled>
 				<ServerSideRender
 					block="core/latest-comments"
-					attributes={ attributes }
+					attributes={ serverSideAttributes }
 					// The preview uses the site's locale to make it more true to how
 					// the block appears on the frontend. Setting the locale
 					// explicitly prevents any middleware from setting it to 'user'.

@@ -4,7 +4,7 @@
 const debug = require( '../../debug' );
 
 /** @typedef {ReturnType<import('@actions/github').getOctokit>} GitHub */
-/** @typedef {import('@octokit/webhooks').WebhookPayloadPullRequest} WebhookPayloadPullRequest */
+/** @typedef {import('@octokit/webhooks-types').EventPayloadMap['pull_request']} WebhookPayloadPullRequest */
 
 /**
  * Assigns the first-time contributor label to PRs.
@@ -13,6 +13,13 @@ const debug = require( '../../debug' );
  * @param {GitHub}                    octokit Initialized Octokit REST client.
  */
 async function firstTimeContributorLabel( payload, octokit ) {
+	const userType = payload.pull_request.user.type;
+
+	if ( userType === 'Bot' ) {
+		debug( 'first-time-contributor: User is a bot. Aborting' );
+		return;
+	}
+
 	const repo = payload.repository.name;
 	const owner = payload.repository.owner.login;
 	const author = payload.pull_request.user.login;
@@ -58,8 +65,7 @@ async function firstTimeContributorLabel( payload, octokit ) {
 		body:
 			':wave: Thanks for your first Pull Request and for helping build the future of Gutenberg and WordPress, @' +
 			author +
-			"! In case you missed it, we'd love to have you join us in our [Slack community](https://make.wordpress.org/chat/), " +
-			'where we hold [regularly weekly meetings](https://make.wordpress.org/core/tag/core-editor-summary/) open to anyone to coordinate with each other.\n\n' +
+			"! In case you missed it, we'd love to have you join us in our [Slack community](https://make.wordpress.org/chat/).\n\n" +
 			'If you want to learn more about WordPress development in general, check out the [Core Handbook](https://make.wordpress.org/core/handbook/) full of helpful information.',
 	} );
 }

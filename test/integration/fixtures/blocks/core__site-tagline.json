@@ -1,10 +1,11 @@
 [
 	{
-		"clientId": "_clientId_0",
 		"name": "core/site-tagline",
 		"isValid": true,
-		"attributes": {},
-		"innerBlocks": [],
-		"originalContent": ""
+		"attributes": {
+			"level": 0,
+			"levelOptions": [ 0, 1, 2, 3, 4, 5, 6 ]
+		},
+		"innerBlocks": []
 	}
 ]

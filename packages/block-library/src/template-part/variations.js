@@ -3,38 +3,15 @@
  */
 import { store as coreDataStore } from '@wordpress/core-data';
 import { select } from '@wordpress/data';
-import {
-	header as headerIcon,
-	footer as footerIcon,
-	sidebar as sidebarIcon,
-	symbolFilled as symbolFilledIcon,
-} from '@wordpress/icons';
 
 /**
  * Internal dependencies
  */
-import fallbackVariations from './fallback-variations';
-
-function getTemplatePartIcon( iconName ) {
-	if ( 'header' === iconName ) {
-		return headerIcon;
-	} else if ( 'footer' === iconName ) {
-		return footerIcon;
-	} else if ( 'sidebar' === iconName ) {
-		return sidebarIcon;
-	}
-	return symbolFilledIcon;
-}
+import { getTemplatePartIcon } from './edit/utils/get-template-part-icon';
 
 export function enhanceTemplatePartVariations( settings, name ) {
 	if ( name !== 'core/template-part' ) {
 		return settings;
-	}
-
-	// WordPress versions pre-5.8 do not support server side variation registration.
-	// So we must register the fallback variations until those versions are no longer supported.
-	if ( ! ( settings.variations && settings.variations.length ) ) {
-		return { ...settings, variations: fallbackVariations };
 	}
 
 	if ( settings.variations ) {
@@ -42,15 +19,25 @@ export function enhanceTemplatePartVariations( settings, name ) {
 			const { area, theme, slug } = blockAttributes;
 			// We first check the `area` block attribute which is set during insertion.
 			// This property is removed on the creation of a template part.
-			if ( area ) return area === variationAttributes.area;
+			if ( area ) {
+				return area === variationAttributes.area;
+			}
 			// Find a matching variation from the created template part
 			// by checking the entity's `area` property.
-			if ( ! slug ) return false;
-			const entity = select( coreDataStore ).getEntityRecord(
+			if ( ! slug ) {
+				return false;
+			}
+			const { getCurrentTheme, getEntityRecord } =
+				select( coreDataStore );
+			const entity = getEntityRecord(
 				'postType',
 				'wp_template_part',
-				`${ theme }//${ slug }`
+				`${ theme || getCurrentTheme()?.stylesheet }//${ slug }`
 			);
+
+			if ( entity?.slug ) {
+				return entity.slug === variationAttributes.slug;
+			}
 			return entity?.area === variationAttributes.area;
 		};
 

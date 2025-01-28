@@ -4,39 +4,28 @@
 import { store as blocksStore } from '@wordpress/blocks';
 import {
 	registerCoreBlocks,
+	__experimentalGetCoreBlocks,
 	__experimentalRegisterExperimentalCoreBlocks,
 } from '@wordpress/block-library';
 import { dispatch } from '@wordpress/data';
-import { render, unmountComponentAtNode } from '@wordpress/element';
+import deprecated from '@wordpress/deprecated';
+import { createRoot, StrictMode } from '@wordpress/element';
+import { privateApis as editorPrivateApis } from '@wordpress/editor';
+import { store as preferencesStore } from '@wordpress/preferences';
 import {
-	__experimentalFetchLinkSuggestions as fetchLinkSuggestions,
-	__experimentalFetchUrlData as fetchUrlData,
-} from '@wordpress/core-data';
+	registerLegacyWidgetBlock,
+	registerWidgetGroupBlock,
+} from '@wordpress/widgets';
 
 /**
  * Internal dependencies
  */
-import './plugins';
 import './hooks';
-import './store';
-import Editor from './components/editor';
+import { store as editSiteStore } from './store';
+import { unlock } from './lock-unlock';
+import App from './components/app';
 
-/**
- * Reinitializes the editor after the user chooses to reboot the editor after
- * an unhandled error occurs, replacing previously mounted editor element using
- * an initial state from prior to the crash.
- *
- * @param {Element} target   DOM node in which editor is rendered.
- * @param {?Object} settings Editor settings object.
- */
-export function reinitializeEditor( target, settings ) {
-	unmountComponentAtNode( target );
-	const reboot = reinitializeEditor.bind( null, target, settings );
-	render(
-		<Editor initialSettings={ settings } onError={ reboot } />,
-		target
-	);
-}
+const { registerCoreBlockBindingsSources } = unlock( editorPrivateApis );
 
 /**
  * Initializes the site editor screen.
@@ -44,31 +33,82 @@ export function reinitializeEditor( target, settings ) {
  * @param {string} id       ID of the root element to render the screen in.
  * @param {Object} settings Editor settings.
  */
-export function initialize( id, settings ) {
-	settings.__experimentalFetchLinkSuggestions = ( search, searchOptions ) =>
-		fetchLinkSuggestions( search, searchOptions, settings );
-	settings.__experimentalFetchRichUrlData = fetchUrlData;
-	settings.__experimentalSpotlightEntityBlocks = [ 'core/template-part' ];
-
+export function initializeEditor( id, settings ) {
 	const target = document.getElementById( id );
-	const reboot = reinitializeEditor.bind( null, target, settings );
+	const root = createRoot( target );
 
-	dispatch( blocksStore ).__experimentalReapplyBlockTypeFilters();
-	registerCoreBlocks();
-	if ( process.env.GUTENBERG_PHASE === 2 ) {
+	dispatch( blocksStore ).reapplyBlockTypeFilters();
+	const coreBlocks = __experimentalGetCoreBlocks().filter(
+		( { name } ) => name !== 'core/freeform'
+	);
+	registerCoreBlocks( coreBlocks );
+	registerCoreBlockBindingsSources();
+	dispatch( blocksStore ).setFreeformFallbackBlockName( 'core/html' );
+	registerLegacyWidgetBlock( { inserter: false } );
+	registerWidgetGroupBlock( { inserter: false } );
+	if ( globalThis.IS_GUTENBERG_PLUGIN ) {
 		__experimentalRegisterExperimentalCoreBlocks( {
 			enableFSEBlocks: true,
 		} );
 	}
 
-	render(
-		<Editor initialSettings={ settings } onError={ reboot } />,
-		target
+	// We dispatch actions and update the store synchronously before rendering
+	// so that we won't trigger unnecessary re-renders with useEffect.
+	dispatch( preferencesStore ).setDefaults( 'core/edit-site', {
+		welcomeGuide: true,
+		welcomeGuideStyles: true,
+		welcomeGuidePage: true,
+		welcomeGuideTemplate: true,
+	} );
+
+	dispatch( preferencesStore ).setDefaults( 'core', {
+		allowRightClickOverrides: true,
+		distractionFree: false,
+		editorMode: 'visual',
+		editorTool: 'edit',
+		fixedToolbar: false,
+		focusMode: false,
+		inactivePanels: [],
+		keepCaretInsideBlock: false,
+		openPanels: [ 'post-status' ],
+		showBlockBreadcrumbs: true,
+		showListViewByDefault: false,
+		enableChoosePatternModal: true,
+	} );
+
+	if ( window.__experimentalMediaProcessing ) {
+		dispatch( preferencesStore ).setDefaults( 'core/media', {
+			requireApproval: true,
+			optimizeOnUpload: true,
+		} );
+	}
+
+	dispatch( editSiteStore ).updateSettings( settings );
+
+	// Prevent the default browser action for files dropped outside of dropzones.
+	window.addEventListener( 'dragover', ( e ) => e.preventDefault(), false );
+	window.addEventListener( 'drop', ( e ) => e.preventDefault(), false );
+
+	root.render(
+		<StrictMode>
+			<App />
+		</StrictMode>
 	);
+
+	return root;
 }
 
-export { default as __experimentalMainDashboardButton } from './components/main-dashboard-button';
-export { default as __experimentalNavigationToggle } from './components/navigation-sidebar/navigation-toggle';
-export { default as PluginSidebar } from './components/sidebar/plugin-sidebar';
-export { default as PluginSidebarMoreMenuItem } from './components/header/plugin-sidebar-more-menu-item';
-export { default as PluginMoreMenuItem } from './components/header/plugin-more-menu-item';
+export function reinitializeEditor() {
+	deprecated( 'wp.editSite.reinitializeEditor', {
+		since: '6.2',
+		version: '6.3',
+	} );
+}
+
+export { default as PluginTemplateSettingPanel } from './components/plugin-template-setting-panel';
+export { store } from './store';
+export * from './deprecated';
+
+// Temporary: While the posts dashboard is being iterated on
+// it's being built in the same package as the site editor.
+export { initializePostsDashboard } from './posts';

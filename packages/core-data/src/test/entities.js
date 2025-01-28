@@ -1,16 +1,9 @@
 /**
- * WordPress dependencies
- */
-import triggerFetch from '@wordpress/api-fetch';
-jest.mock( '@wordpress/api-fetch' );
-
-/**
  * Internal dependencies
  */
 import {
 	getMethodName,
-	defaultEntities,
-	getKindEntities,
+	rootEntitiesConfig,
 	prePersistPostType,
 } from '../entities';
 
@@ -27,75 +20,19 @@ describe( 'getMethodName', () => {
 		expect( methodName ).toEqual( 'setPostType' );
 	} );
 
-	it( 'should use the plural form', () => {
-		const methodName = getMethodName( 'root', 'postType', 'get', true );
-
-		expect( methodName ).toEqual( 'getPostTypes' );
-	} );
-
 	it( 'should use the given plural form', () => {
-		const methodName = getMethodName( 'root', 'taxonomy', 'get', true );
+		const methodName = getMethodName( 'root', 'taxonomies', 'get' );
 
 		expect( methodName ).toEqual( 'getTaxonomies' );
 	} );
 
 	it( 'should include the kind in the method name', () => {
-		const id = defaultEntities.length;
-		defaultEntities[ id ] = { name: 'book', kind: 'postType' };
+		const id = rootEntitiesConfig.length;
+		rootEntitiesConfig[ id ] = { name: 'book', kind: 'postType' };
 		const methodName = getMethodName( 'postType', 'book' );
-		delete defaultEntities[ id ];
+		delete rootEntitiesConfig[ id ];
 
 		expect( methodName ).toEqual( 'getPostTypeBook' );
-	} );
-} );
-
-describe( 'getKindEntities', () => {
-	beforeEach( async () => {
-		triggerFetch.mockReset();
-		jest.useFakeTimers();
-	} );
-
-	it( 'shouldn’t do anything if the entities have already been resolved', async () => {
-		const dispatch = jest.fn();
-		const select = {
-			getEntitiesByKind: jest.fn( () => entities ),
-		};
-		const entities = [ { kind: 'postType' } ];
-		await getKindEntities( 'postType' )( { dispatch, select } );
-		expect( dispatch ).not.toHaveBeenCalled();
-	} );
-
-	it( 'shouldn’t do anything if there no defined kind config', async () => {
-		const dispatch = jest.fn();
-		const select = {
-			getEntitiesByKind: jest.fn( () => [] ),
-		};
-		await getKindEntities( 'unknownKind' )( { dispatch, select } );
-		expect( dispatch ).not.toHaveBeenCalled();
-	} );
-
-	it( 'should fetch and add the entities', async () => {
-		const fetchedEntities = [
-			{
-				rest_base: 'posts',
-				labels: {
-					singular_name: 'post',
-				},
-			},
-		];
-		const dispatch = jest.fn();
-		const select = {
-			getEntitiesByKind: jest.fn( () => [] ),
-		};
-		triggerFetch.mockImplementation( () => fetchedEntities );
-
-		await getKindEntities( 'postType' )( { dispatch, select } );
-		expect( dispatch ).toHaveBeenCalledTimes( 1 );
-		expect( dispatch.mock.calls[ 0 ][ 0 ].type ).toBe( 'ADD_ENTITIES' );
-		expect( dispatch.mock.calls[ 0 ][ 0 ].entities.length ).toBe( 1 );
-		expect( dispatch.mock.calls[ 0 ][ 0 ].entities[ 0 ].baseURL ).toBe(
-			'/wp/v2/posts'
-		);
 	} );
 } );
 

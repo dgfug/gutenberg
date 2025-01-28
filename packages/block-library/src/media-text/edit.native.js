@@ -1,7 +1,6 @@
 /**
  * External dependencies
  */
-import { get } from 'lodash';
 import { View } from 'react-native';
 
 /**
@@ -32,12 +31,12 @@ import { pullLeft, pullRight, replace } from '@wordpress/icons';
 /**
  * Internal dependencies
  */
+import { WIDTH_CONSTRAINT_PERCENTAGE } from './constants';
 import MediaContainer from './media-container';
 import styles from './style.scss';
 
 const TEMPLATE = [ [ 'core/paragraph' ] ];
 // this limits the resize to a safe zone to avoid making broken layouts
-const WIDTH_CONSTRAINT_PERCENTAGE = 15;
 const BREAKPOINTS = {
 	mobile: 480,
 };
@@ -53,6 +52,7 @@ class MediaTextEdit extends Component {
 
 		this.onSelectMedia = this.onSelectMedia.bind( this );
 		this.onMediaUpdate = this.onMediaUpdate.bind( this );
+		this.onMediaThumbnailUpdate = this.onMediaThumbnailUpdate.bind( this );
 		this.onWidthChange = this.onWidthChange.bind( this );
 		this.commitWidthChange = this.commitWidthChange.bind( this );
 		this.onLayoutChange = this.onLayoutChange.bind( this );
@@ -82,7 +82,7 @@ class MediaTextEdit extends Component {
 
 		let mediaType;
 		let src;
-		// for media selections originated from a file upload.
+		// For media selections originated from a file upload.
 		if ( media.media_type ) {
 			if ( media.media_type === 'image' ) {
 				mediaType = 'image';
@@ -92,20 +92,15 @@ class MediaTextEdit extends Component {
 				mediaType = 'video';
 			}
 		} else {
-			// for media selections originated from existing files in the media library.
+			// For media selections originated from existing files in the media library.
 			mediaType = media.type;
 		}
 
 		if ( mediaType === 'image' && media.sizes ) {
 			// Try the "large" size URL, falling back to the "full" size URL below.
 			src =
-				get( media, [ 'sizes', 'large', 'url' ] ) ||
-				get( media, [
-					'media_details',
-					'sizes',
-					'large',
-					'source_url',
-				] );
+				media.sizes.large?.url ||
+				media?.media_details?.sizes?.large?.source_url;
 		}
 
 		setAttributes( {
@@ -124,6 +119,14 @@ class MediaTextEdit extends Component {
 		setAttributes( {
 			mediaId: media.id,
 			mediaUrl: media.url,
+		} );
+	}
+
+	onMediaThumbnailUpdate( mediaUrl ) {
+		const { setAttributes } = this.props;
+
+		setAttributes( {
+			mediaUrl,
 		} );
 	}
 
@@ -186,9 +189,9 @@ class MediaTextEdit extends Component {
 
 		return (
 			<InspectorControls>
-				<PanelBody title={ __( 'Media & Text settings' ) }>
+				<PanelBody title={ __( 'Settings' ) }>
 					<ToggleControl
-						label={ __( 'Crop image to fill entire column' ) }
+						label={ __( 'Crop image to fill' ) }
 						checked={ imageFill }
 						onChange={ this.onSetImageFill }
 					/>
@@ -215,7 +218,7 @@ class MediaTextEdit extends Component {
 				? ( containerWidth * mediaWidth ) / 100 -
 				  styles.mediaAreaPadding.width
 				: containerWidth;
-		const aligmentStyles =
+		const alignmentStyles =
 			styles[
 				`is-vertically-aligned-${ verticalAlignment || 'center' }`
 			];
@@ -227,6 +230,7 @@ class MediaTextEdit extends Component {
 				onFocus={ this.props.onFocus }
 				onMediaSelected={ this.onMediaSelected }
 				onMediaUpdate={ this.onMediaUpdate }
+				onMediaThumbnailUpdate={ this.onMediaThumbnailUpdate }
 				onSelectMedia={ this.onSelectMedia }
 				onSetOpenPickerRef={ this.onSetOpenPickerRef }
 				onWidthChange={ this.onWidthChange }
@@ -240,7 +244,7 @@ class MediaTextEdit extends Component {
 					imageFill,
 					focalPoint,
 					isSelected,
-					aligmentStyles,
+					alignmentStyles,
 					shouldStack,
 				} }
 			/>
@@ -275,6 +279,8 @@ class MediaTextEdit extends Component {
 		const widthString = `${ temporaryMediaWidth }%`;
 		const innerBlockWidth = shouldStack ? 100 : 100 - temporaryMediaWidth;
 		const innerBlockWidthString = `${ innerBlockWidth }%`;
+		const hasMedia =
+			mediaType === MEDIA_TYPE_IMAGE || mediaType === MEDIA_TYPE_VIDEO;
 
 		const innerBlockContainerStyle = [
 			{ width: innerBlockWidthString },
@@ -344,7 +350,7 @@ class MediaTextEdit extends Component {
 			<>
 				{ mediaType === MEDIA_TYPE_IMAGE && this.getControls() }
 				<BlockControls>
-					{ ( isMediaSelected || mediaType === MEDIA_TYPE_VIDEO ) && (
+					{ hasMedia && (
 						<ToolbarGroup>
 							<Button
 								label={ __( 'Edit media' ) }
@@ -393,11 +399,8 @@ class MediaTextEdit extends Component {
 export default compose(
 	withColors( 'backgroundColor' ),
 	withSelect( ( select, { clientId } ) => {
-		const {
-			getSelectedBlockClientId,
-			getBlockParents,
-			getSettings,
-		} = select( blockEditorStore );
+		const { getSelectedBlockClientId, getBlockParents, getSettings } =
+			select( blockEditorStore );
 
 		const parents = getBlockParents( clientId, true );
 

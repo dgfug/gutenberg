@@ -1,26 +1,25 @@
 /**
- * External dependencies
- */
-import { escape as escapeString, find, get, uniqBy } from 'lodash';
-
-/**
  * WordPress dependencies
  */
 import { __, _x, sprintf } from '@wordpress/i18n';
-import { useEffect, useMemo, useState } from '@wordpress/element';
-import { FormTokenField, withFilters } from '@wordpress/components';
+import { Fragment, useEffect, useMemo, useState } from '@wordpress/element';
+import {
+	FormTokenField,
+	withFilters,
+	__experimentalVStack as VStack,
+} from '@wordpress/components';
 import { useSelect, useDispatch } from '@wordpress/data';
+import deprecated from '@wordpress/deprecated';
 import { store as coreStore } from '@wordpress/core-data';
 import { useDebounce } from '@wordpress/compose';
-import apiFetch from '@wordpress/api-fetch';
-import { addQueryArgs } from '@wordpress/url';
 import { speak } from '@wordpress/a11y';
+import { store as noticesStore } from '@wordpress/notices';
 
 /**
  * Internal dependencies
  */
 import { store as editorStore } from '../../store';
-import { unescapeString, unescapeTerm, unescapeTerms } from '../../utils/terms';
+import { unescapeString, unescapeTerm } from '../../utils/terms';
 import MostUsedTerms from './most-used-terms';
 
 /**
@@ -32,13 +31,14 @@ import MostUsedTerms from './most-used-terms';
 const EMPTY_ARRAY = [];
 
 /**
- * Module constants
+ * How the max suggestions limit was chosen:
+ *  - Matches the `per_page` range set by the REST API.
+ *  - Can't use "unbound" query. The `FormTokenField` needs a fixed number.
+ *  - Matches default for `FormTokenField`.
  */
-const MAX_TERMS_SUGGESTIONS = 20;
+const MAX_TERMS_SUGGESTIONS = 100;
 const DEFAULT_QUERY = {
 	per_page: MAX_TERMS_SUGGESTIONS,
-	orderby: 'count',
-	order: 'desc',
 	_fields: 'id,name',
 	context: 'view',
 };
@@ -48,48 +48,46 @@ const isSameTermName = ( termA, termB ) =>
 	unescapeString( termB ).toLowerCase();
 
 const termNamesToIds = ( names, terms ) => {
-	return names.map(
-		( termName ) =>
-			find( terms, ( term ) => isSameTermName( term.name, termName ) ).id
-	);
+	return names
+		.map(
+			( termName ) =>
+				terms.find( ( term ) => isSameTermName( term.name, termName ) )
+					?.id
+		)
+		.filter( ( id ) => id !== undefined );
 };
 
-// Tries to create a term or fetch it if it already exists.
-function findOrCreateTerm( termName, restBase ) {
-	const escapedTermName = escapeString( termName );
+const Wrapper = ( { children, __nextHasNoMarginBottom } ) =>
+	__nextHasNoMarginBottom ? (
+		<VStack spacing={ 4 }>{ children }</VStack>
+	) : (
+		<Fragment>{ children }</Fragment>
+	);
 
-	return apiFetch( {
-		path: `/wp/v2/${ restBase }`,
-		method: 'POST',
-		data: { name: escapedTermName },
-	} )
-		.catch( ( error ) => {
-			const errorCode = error.code;
-			if ( errorCode === 'term_exists' ) {
-				// If the terms exist, fetch it instead of creating a new one.
-				const addRequest = apiFetch( {
-					path: addQueryArgs( `/wp/v2/${ restBase }`, {
-						...DEFAULT_QUERY,
-						search: escapedTermName,
-					} ),
-				} ).then( unescapeTerms );
-
-				return addRequest.then( ( searchResult ) => {
-					return find( searchResult, ( result ) =>
-						isSameTermName( result.name, termName )
-					);
-				} );
-			}
-
-			return Promise.reject( error );
-		} )
-		.then( unescapeTerm );
-}
-
-function FlatTermSelector( { slug } ) {
+/**
+ * Renders a flat term selector component.
+ *
+ * @param {Object}  props                         The component props.
+ * @param {string}  props.slug                    The slug of the taxonomy.
+ * @param {boolean} props.__nextHasNoMarginBottom Start opting into the new margin-free styles that will become the default in a future version, currently scheduled to be WordPress 7.0. (The prop can be safely removed once this happens.)
+ *
+ * @return {React.ReactNode} The rendered flat term selector component.
+ */
+export function FlatTermSelector( { slug, __nextHasNoMarginBottom } ) {
 	const [ values, setValues ] = useState( [] );
 	const [ search, setSearch ] = useState( '' );
 	const debouncedSearch = useDebounce( setSearch, 500 );
+
+	if ( ! __nextHasNoMarginBottom ) {
+		deprecated(
+			'Bottom margin styles for wp.editor.PostTaxonomiesFlatTermSelector',
+			{
+				since: '6.7',
+				version: '7.0',
+				hint: 'Set the `__nextHasNoMarginBottom` prop to true to start opting into the new styles, which will become the default in a future version.',
+			}
+		);
+	}
 
 	const {
 		terms,
@@ -100,14 +98,10 @@ function FlatTermSelector( { slug } ) {
 		hasResolvedTerms,
 	} = useSelect(
 		( select ) => {
-			const { getCurrentPost, getEditedPostAttribute } = select(
-				editorStore
-			);
-			const {
-				getEntityRecords,
-				getTaxonomy,
-				hasFinishedResolution,
-			} = select( coreStore );
+			const { getCurrentPost, getEditedPostAttribute } =
+				select( editorStore );
+			const { getEntityRecords, getTaxonomy, hasFinishedResolution } =
+				select( coreStore );
 			const post = getCurrentPost();
 			const _taxonomy = getTaxonomy( slug );
 			const _termIds = _taxonomy
@@ -116,34 +110,24 @@ function FlatTermSelector( { slug } ) {
 
 			const query = {
 				...DEFAULT_QUERY,
-				include: _termIds.join( ',' ),
+				include: _termIds?.join( ',' ),
 				per_page: -1,
 			};
 
 			return {
 				hasCreateAction: _taxonomy
-					? get(
-							post,
-							[
-								'_links',
-								'wp:action-create-' + _taxonomy.rest_base,
-							],
-							false
-					  )
+					? post._links?.[
+							'wp:action-create-' + _taxonomy.rest_base
+					  ] ?? false
 					: false,
 				hasAssignAction: _taxonomy
-					? get(
-							post,
-							[
-								'_links',
-								'wp:action-assign-' + _taxonomy.rest_base,
-							],
-							false
-					  )
+					? post._links?.[
+							'wp:action-assign-' + _taxonomy.rest_base
+					  ] ?? false
 					: false,
 				taxonomy: _taxonomy,
 				termIds: _termIds,
-				terms: _termIds.length
+				terms: _termIds?.length
 					? getEntityRecords( 'taxonomy', slug, query )
 					: EMPTY_ARRAY,
 				hasResolvedTerms: hasFinishedResolution( 'getEntityRecords', [
@@ -169,7 +153,7 @@ function FlatTermSelector( { slug } ) {
 					: EMPTY_ARRAY,
 			};
 		},
-		[ search ]
+		[ search, slug ]
 	);
 
 	// Update terms state only after the selectors are resolved.
@@ -177,7 +161,7 @@ function FlatTermSelector( { slug } ) {
 	// while core data makes REST API requests.
 	useEffect( () => {
 		if ( hasResolvedTerms ) {
-			const newValues = terms.map( ( term ) =>
+			const newValues = ( terms ?? [] ).map( ( term ) =>
 				unescapeString( term.name )
 			);
 
@@ -192,9 +176,29 @@ function FlatTermSelector( { slug } ) {
 	}, [ searchResults ] );
 
 	const { editPost } = useDispatch( editorStore );
+	const { saveEntityRecord } = useDispatch( coreStore );
+	const { createErrorNotice } = useDispatch( noticesStore );
 
 	if ( ! hasAssignAction ) {
 		return null;
+	}
+
+	async function findOrCreateTerm( term ) {
+		try {
+			const newTerm = await saveEntityRecord( 'taxonomy', slug, term, {
+				throwOnError: true,
+			} );
+			return unescapeTerm( newTerm );
+		} catch ( error ) {
+			if ( error.code !== 'term_exists' ) {
+				throw error;
+			}
+
+			return {
+				id: error.data.term_id,
+				name: term.name,
+			};
+		}
 	}
 
 	function onUpdateTerms( newTermIds ) {
@@ -202,11 +206,22 @@ function FlatTermSelector( { slug } ) {
 	}
 
 	function onChange( termNames ) {
-		const availableTerms = [ ...terms, ...( searchResults ?? [] ) ];
-		const uniqueTerms = uniqBy( termNames, ( term ) => term.toLowerCase() );
+		const availableTerms = [
+			...( terms ?? [] ),
+			...( searchResults ?? [] ),
+		];
+		const uniqueTerms = termNames.reduce( ( acc, name ) => {
+			if (
+				! acc.some( ( n ) => n.toLowerCase() === name.toLowerCase() )
+			) {
+				acc.push( name );
+			}
+			return acc;
+		}, [] );
+
 		const newTermNames = uniqueTerms.filter(
 			( termName ) =>
-				! find( availableTerms, ( term ) =>
+				! availableTerms.find( ( term ) =>
 					isSameTermName( term.name, termName )
 				)
 		);
@@ -216,9 +231,8 @@ function FlatTermSelector( { slug } ) {
 		setValues( uniqueTerms );
 
 		if ( newTermNames.length === 0 ) {
-			return onUpdateTerms(
-				termNamesToIds( uniqueTerms, availableTerms )
-			);
+			onUpdateTerms( termNamesToIds( uniqueTerms, availableTerms ) );
+			return;
 		}
 
 		if ( ! hasCreateAction ) {
@@ -227,14 +241,23 @@ function FlatTermSelector( { slug } ) {
 
 		Promise.all(
 			newTermNames.map( ( termName ) =>
-				findOrCreateTerm( termName, taxonomy.rest_base )
+				findOrCreateTerm( { name: termName } )
 			)
-		).then( ( newTerms ) => {
-			const newAvailableTerms = availableTerms.concat( newTerms );
-			return onUpdateTerms(
-				termNamesToIds( uniqueTerms, newAvailableTerms )
-			);
-		} );
+		)
+			.then( ( newTerms ) => {
+				const newAvailableTerms = availableTerms.concat( newTerms );
+				onUpdateTerms(
+					termNamesToIds( uniqueTerms, newAvailableTerms )
+				);
+			} )
+			.catch( ( error ) => {
+				createErrorNotice( error.message, {
+					type: 'snackbar',
+				} );
+				// In case of a failure, try assigning available terms.
+				// This will invalidate the optimistic update.
+				onUpdateTerms( termNamesToIds( uniqueTerms, availableTerms ) );
+			} );
 	}
 
 	function appendTerm( newTerm ) {
@@ -243,30 +266,23 @@ function FlatTermSelector( { slug } ) {
 		}
 
 		const newTermIds = [ ...termIds, newTerm.id ];
+		const defaultName = slug === 'post_tag' ? __( 'Tag' ) : __( 'Term' );
 		const termAddedMessage = sprintf(
 			/* translators: %s: term name. */
 			_x( '%s added', 'term' ),
-			get(
-				taxonomy,
-				[ 'labels', 'singular_name' ],
-				slug === 'post_tag' ? __( 'Tag' ) : __( 'Term' )
-			)
+			taxonomy?.labels?.singular_name ?? defaultName
 		);
 
 		speak( termAddedMessage, 'assertive' );
 		onUpdateTerms( newTermIds );
 	}
 
-	const newTermLabel = get(
-		taxonomy,
-		[ 'labels', 'add_new_item' ],
-		slug === 'post_tag' ? __( 'Add new tag' ) : __( 'Add new Term' )
-	);
-	const singularName = get(
-		taxonomy,
-		[ 'labels', 'singular_name' ],
-		slug === 'post_tag' ? __( 'Tag' ) : __( 'Term' )
-	);
+	const newTermLabel =
+		taxonomy?.labels?.add_new_item ??
+		( slug === 'post_tag' ? __( 'Add new tag' ) : __( 'Add new Term' ) );
+	const singularName =
+		taxonomy?.labels?.singular_name ??
+		( slug === 'post_tag' ? __( 'Tag' ) : __( 'Term' ) );
 	const termAddedLabel = sprintf(
 		/* translators: %s: term name. */
 		_x( '%s added', 'term' ),
@@ -284,8 +300,9 @@ function FlatTermSelector( { slug } ) {
 	);
 
 	return (
-		<>
+		<Wrapper __nextHasNoMarginBottom={ __nextHasNoMarginBottom }>
 			<FormTokenField
+				__next40pxDefaultSize
 				value={ values }
 				suggestions={ suggestions }
 				onChange={ onChange }
@@ -297,9 +314,10 @@ function FlatTermSelector( { slug } ) {
 					removed: termRemovedLabel,
 					remove: removeTermLabel,
 				} }
+				__nextHasNoMarginBottom={ __nextHasNoMarginBottom }
 			/>
 			<MostUsedTerms taxonomy={ taxonomy } onSelect={ appendTerm } />
-		</>
+		</Wrapper>
 	);
 }
 

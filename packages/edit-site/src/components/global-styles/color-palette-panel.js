@@ -1,22 +1,92 @@
 /**
  * WordPress dependencies
  */
-import { __experimentalColorEdit as ColorEdit } from '@wordpress/components';
+import { useViewportMatch } from '@wordpress/compose';
+import {
+	__experimentalPaletteEdit as PaletteEdit,
+	__experimentalVStack as VStack,
+} from '@wordpress/components';
+import { __ } from '@wordpress/i18n';
+import { privateApis as blockEditorPrivateApis } from '@wordpress/block-editor';
 
 /**
  * Internal dependencies
  */
-import { useSetting } from './hooks';
+import { unlock } from '../../lock-unlock';
+import ColorVariations from './variations/variations-color';
+
+const { useGlobalSetting } = unlock( blockEditorPrivateApis );
+const mobilePopoverProps = { placement: 'bottom-start', offset: 8 };
 
 export default function ColorPalettePanel( { name } ) {
-	const [ userColors, setColors ] = useSetting(
-		'color.palette',
-		name,
-		'user'
+	const [ themeColors, setThemeColors ] = useGlobalSetting(
+		'color.palette.theme',
+		name
 	);
+	const [ baseThemeColors ] = useGlobalSetting(
+		'color.palette.theme',
+		name,
+		'base'
+	);
+	const [ defaultColors, setDefaultColors ] = useGlobalSetting(
+		'color.palette.default',
+		name
+	);
+	const [ baseDefaultColors ] = useGlobalSetting(
+		'color.palette.default',
+		name,
+		'base'
+	);
+	const [ customColors, setCustomColors ] = useGlobalSetting(
+		'color.palette.custom',
+		name
+	);
+
+	const [ defaultPaletteEnabled ] = useGlobalSetting(
+		'color.defaultPalette',
+		name
+	);
+	const isMobileViewport = useViewportMatch( 'small', '<' );
+	const popoverProps = isMobileViewport ? mobilePopoverProps : undefined;
+
 	return (
-		<div className="edit-site-global-styles-color-palette-panel">
-			<ColorEdit colors={ userColors } onChange={ setColors } />
-		</div>
+		<VStack
+			className="edit-site-global-styles-color-palette-panel"
+			spacing={ 8 }
+		>
+			{ !! themeColors && !! themeColors.length && (
+				<PaletteEdit
+					canReset={ themeColors !== baseThemeColors }
+					canOnlyChangeValues
+					colors={ themeColors }
+					onChange={ setThemeColors }
+					paletteLabel={ __( 'Theme' ) }
+					paletteLabelHeadingLevel={ 3 }
+					popoverProps={ popoverProps }
+				/>
+			) }
+			{ !! defaultColors &&
+				!! defaultColors.length &&
+				!! defaultPaletteEnabled && (
+					<PaletteEdit
+						canReset={ defaultColors !== baseDefaultColors }
+						canOnlyChangeValues
+						colors={ defaultColors }
+						onChange={ setDefaultColors }
+						paletteLabel={ __( 'Default' ) }
+						paletteLabelHeadingLevel={ 3 }
+						popoverProps={ popoverProps }
+					/>
+				) }
+			<PaletteEdit
+				colors={ customColors }
+				onChange={ setCustomColors }
+				paletteLabel={ __( 'Custom' ) }
+				paletteLabelHeadingLevel={ 3 }
+				slugPrefix="custom-"
+				popoverProps={ popoverProps }
+			/>
+			<ColorVariations title={ __( 'Palettes' ) } />
+		</VStack>
 	);
 }

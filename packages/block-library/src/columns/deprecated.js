@@ -1,8 +1,7 @@
 /**
  * External dependencies
  */
-import { omit } from 'lodash';
-import classnames from 'classnames';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
@@ -17,7 +16,7 @@ import { InnerBlocks, getColorClassName } from '@wordpress/block-editor';
  *
  * @param {string} originalContent Deprecated Columns inner block HTML.
  *
- * @return {?number} Column to which inner block is to be assigned.
+ * @return {number | undefined} Column to which inner block is to be assigned.
  */
 function getDeprecatedLayoutColumn( originalContent ) {
 	let { doc } = getDeprecatedLayoutColumn;
@@ -49,8 +48,12 @@ const migrateCustomColors = ( attributes ) => {
 	if ( attributes.customBackgroundColor ) {
 		style.color.background = attributes.customBackgroundColor;
 	}
+
+	const { customTextColor, customBackgroundColor, ...restAttributes } =
+		attributes;
+
 	return {
-		...omit( attributes, [ 'customTextColor', 'customBackgroundColor' ] ),
+		...restAttributes,
 		style,
 		isStackedOnMobile: true,
 	};
@@ -92,12 +95,13 @@ export default [
 
 			const textClass = getColorClassName( 'color', textColor );
 
-			const className = classnames( {
+			const className = clsx( {
 				'has-background': backgroundColor || customBackgroundColor,
 				'has-text-color': textColor || customTextColor,
 				[ backgroundClass ]: backgroundClass,
 				[ textClass ]: textClass,
-				[ `are-vertically-aligned-${ verticalAlignment }` ]: verticalAlignment,
+				[ `are-vertically-aligned-${ verticalAlignment }` ]:
+					verticalAlignment,
 			} );
 
 			const style = {
@@ -167,9 +171,11 @@ export default [
 				createBlock( 'core/column', {}, columnBlocks )
 			);
 
+			const { columns: ignoredColumns, ...restAttributes } = attributes;
+
 			return [
 				{
-					...omit( attributes, [ 'columns' ] ),
+					...restAttributes,
 					isStackedOnMobile: true,
 				},
 				migratedInnerBlocks,
@@ -193,8 +199,9 @@ export default [
 			},
 		},
 		migrate( attributes, innerBlocks ) {
+			const { columns, ...restAttributes } = attributes;
 			attributes = {
-				...omit( attributes, [ 'columns' ] ),
+				...restAttributes,
 				isStackedOnMobile: true,
 			};
 
@@ -203,8 +210,9 @@ export default [
 		save( { attributes } ) {
 			const { verticalAlignment, columns } = attributes;
 
-			const wrapperClasses = classnames( `has-${ columns }-columns`, {
-				[ `are-vertically-aligned-${ verticalAlignment }` ]: verticalAlignment,
+			const wrapperClasses = clsx( `has-${ columns }-columns`, {
+				[ `are-vertically-aligned-${ verticalAlignment }` ]:
+					verticalAlignment,
 			} );
 
 			return (

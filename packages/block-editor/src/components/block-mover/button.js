@@ -1,14 +1,13 @@
 /**
  * External dependencies
  */
-import classnames from 'classnames';
-import { castArray, first, last } from 'lodash';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
  */
 import { getBlockType } from '@wordpress/blocks';
-import { Button } from '@wordpress/components';
+import { Button, VisuallyHidden } from '@wordpress/components';
 import { useInstanceId } from '@wordpress/compose';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { forwardRef } from '@wordpress/element';
@@ -62,7 +61,11 @@ const BlockMoverButton = forwardRef(
 		ref
 	) => {
 		const instanceId = useInstanceId( BlockMoverButton );
-		const blocksCount = castArray( clientIds ).length;
+		const normalizedClientIds = Array.isArray( clientIds )
+			? clientIds
+			: [ clientIds ];
+		const blocksCount = normalizedClientIds.length;
+		const { disabled } = props;
 
 		const {
 			blockType,
@@ -81,16 +84,11 @@ const BlockMoverButton = forwardRef(
 					getBlock,
 					getBlockListSettings,
 				} = select( blockEditorStore );
-				const normalizedClientIds = castArray( clientIds );
-				const firstClientId = first( normalizedClientIds );
+				const firstClientId = normalizedClientIds[ 0 ];
 				const blockRootClientId = getBlockRootClientId( firstClientId );
-				const firstBlockIndex = getBlockIndex(
-					firstClientId,
-					blockRootClientId
-				);
+				const firstBlockIndex = getBlockIndex( firstClientId );
 				const lastBlockIndex = getBlockIndex(
-					last( normalizedClientIds ),
-					blockRootClientId
+					normalizedClientIds[ normalizedClientIds.length - 1 ]
 				);
 				const blockOrder = getBlockOrder( blockRootClientId );
 				const block = getBlock( firstClientId );
@@ -101,7 +99,9 @@ const BlockMoverButton = forwardRef(
 
 				return {
 					blockType: block ? getBlockType( block.name ) : null,
-					isDisabled: direction === 'up' ? isFirstBlock : isLastBlock,
+					isDisabled:
+						disabled ||
+						( direction === 'up' ? isFirstBlock : isLastBlock ),
 					rootClientId: blockRootClientId,
 					firstIndex: firstBlockIndex,
 					isFirst: isFirstBlock,
@@ -112,9 +112,8 @@ const BlockMoverButton = forwardRef(
 			[ clientIds, direction ]
 		);
 
-		const { moveBlocksDown, moveBlocksUp } = useDispatch(
-			blockEditorStore
-		);
+		const { moveBlocksDown, moveBlocksUp } =
+			useDispatch( blockEditorStore );
 		const moverFunction =
 			direction === 'up' ? moveBlocksUp : moveBlocksDown;
 
@@ -130,8 +129,9 @@ const BlockMoverButton = forwardRef(
 		return (
 			<>
 				<Button
+					__next40pxDefaultSize
 					ref={ ref }
-					className={ classnames(
+					className={ clsx(
 						'block-editor-block-mover-button',
 						`is-${ direction }-button`
 					) }
@@ -143,12 +143,10 @@ const BlockMoverButton = forwardRef(
 					aria-describedby={ descriptionId }
 					{ ...props }
 					onClick={ isDisabled ? null : onClick }
-					aria-disabled={ isDisabled }
+					disabled={ isDisabled }
+					accessibleWhenDisabled
 				/>
-				<span
-					id={ descriptionId }
-					className="block-editor-block-mover-button__description"
-				>
+				<VisuallyHidden id={ descriptionId }>
 					{ getBlockMoverDescription(
 						blocksCount,
 						blockType && blockType.title,
@@ -158,7 +156,7 @@ const BlockMoverButton = forwardRef(
 						direction === 'up' ? -1 : 1,
 						orientation
 					) }
-				</span>
+				</VisuallyHidden>
 			</>
 		);
 	}

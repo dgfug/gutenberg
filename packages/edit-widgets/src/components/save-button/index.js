@@ -12,9 +12,8 @@ import { store as editWidgetsStore } from '../../store';
 
 function SaveButton() {
 	const { hasEditedWidgetAreaIds, isSaving } = useSelect( ( select ) => {
-		const { getEditedWidgetAreas, isSavingWidgetAreas } = select(
-			editWidgetsStore
-		);
+		const { getEditedWidgetAreas, isSavingWidgetAreas } =
+			select( editWidgetsStore );
 
 		return {
 			hasEditedWidgetAreaIds: getEditedWidgetAreas()?.length > 0,
@@ -23,13 +22,15 @@ function SaveButton() {
 	}, [] );
 	const { saveEditedWidgetAreas } = useDispatch( editWidgetsStore );
 
+	const isDisabled = isSaving || ! hasEditedWidgetAreaIds;
+
 	return (
 		<Button
 			variant="primary"
 			isBusy={ isSaving }
-			aria-disabled={ isSaving }
-			onClick={ isSaving ? undefined : saveEditedWidgetAreas }
-			disabled={ ! hasEditedWidgetAreaIds }
+			aria-disabled={ isDisabled }
+			onClick={ isDisabled ? undefined : saveEditedWidgetAreas }
+			size="compact"
 		>
 			{ isSaving ? __( 'Saving…' ) : __( 'Update' ) }
 		</Button>

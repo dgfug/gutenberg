@@ -16,6 +16,7 @@ const Example = () => {
 
 	return (
 		<NumberControl
+			__next40pxDefaultSize
 			isShiftStepEnabled={ true }
 			onChange={ setValue }
 			shiftStep={ 10 }
@@ -44,13 +45,18 @@ If `isDragEnabled` is true, this controls the amount of `px` to have been dragge
 -   Required: No
 -   Default: `10`
 
-### hideHTMLArrows
+### spinControls
 
-If true, the default `input` HTML arrows will be hidden.
+ The type of spin controls to display. These are buttons that allow the user to
+ quickly increment and decrement the number.
 
--   Type: `Boolean`
+ - 'none' - Do not show spin controls.
+ - 'native' - Use browser's native HTML `input` controls.
+ - 'custom' - Use plus and minus icon buttons.
+
+-   Type: `String`
 -   Required: No
--   Default: `false`
+-   Default: `'native'`
 
 ### isDragEnabled
 
@@ -97,6 +103,20 @@ The minimum `value` allowed.
 -   Required: No
 -   Default: `-Infinity`
 
+### onChange
+
+Callback fired whenever the value of the input changes.
+
+The callback receives two arguments:
+
+1. `newValue`: the new value of the input
+2. `extra`: an object containing, under the `event` key, the original browser event.
+
+Note that the value received as the first argument of the callback is _not_ guaranteed to be a valid value (e.g. it could be outside of the range defined by the [`min`, `max`] props, or it could not match the `step`). In order to check the value's validity, check the `event.target?.validity.valid` property from the callback's second argument.
+
+-   Type: `(newValue, extra) => void`
+-   Required: No
+
 ### required
 
 If `true` enforces a valid number within the control's min/max range. If `false` allows an empty string as a valid value.
@@ -120,3 +140,11 @@ Amount by which the `value` is changed when incrementing/decrementing. It is als
 -   Type: `Number | "any"`
 -   Required: No
 -   Default: `1`
+
+### __next40pxDefaultSize
+
+Start opting into the larger default height that will become the default size in a future version.
+
+-   Type: `Boolean`
+-   Required: No
+-   Default: `false`

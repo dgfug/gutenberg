@@ -41,18 +41,12 @@ export function convertLegacyBlockNameAndAttributes( name, attributes ) {
 			providerSlug in deprecated
 				? deprecated[ providerSlug ]
 				: providerSlug;
-		// this is needed as the `responsive` attribute was passed
-		// in a different way before the refactoring to block variations
+		// This is needed as the `responsive` attribute was passed
+		// in a different way before the refactoring to block variations.
 		if ( ! [ 'amazon-kindle', 'wordpress' ].includes( providerSlug ) ) {
 			newAttributes.responsive = true;
 		}
 		name = 'core/embed';
-	}
-
-	// Convert 'core/query-loop' blocks in existing content to 'core/post-template'.
-	// TODO: Remove this check when WordPress 5.9 is released.
-	if ( name === 'core/query-loop' ) {
-		name = 'core/post-template';
 	}
 
 	// Convert Post Comment blocks in existing content to Comment blocks.
@@ -66,6 +60,108 @@ export function convertLegacyBlockNameAndAttributes( name, attributes ) {
 	if ( name === 'core/post-comment-date' ) {
 		name = 'core/comment-date';
 	}
+	if ( name === 'core/comments-query-loop' ) {
+		name = 'core/comments';
+		const { className = '' } = newAttributes;
+		if ( ! className.includes( 'wp-block-comments-query-loop' ) ) {
+			newAttributes.className = [
+				'wp-block-comments-query-loop',
+				className,
+			].join( ' ' );
+		}
+		// Note that we also had to add a deprecation to the block in order
+		// for the ID change to work.
+	}
+	if ( name === 'core/post-comments' ) {
+		name = 'core/comments';
+		newAttributes.legacy = true;
+	}
 
+	// Column count was stored as a string from WP 6.3-6.6. Convert it to a number.
+	if (
+		attributes.layout?.type === 'grid' &&
+		typeof attributes.layout?.columnCount === 'string'
+	) {
+		newAttributes.layout = {
+			...newAttributes.layout,
+			columnCount: parseInt( attributes.layout.columnCount, 10 ),
+		};
+	}
+
+	// Column span and row span were stored as strings in WP 6.6. Convert them to numbers.
+	if ( typeof attributes.style?.layout?.columnSpan === 'string' ) {
+		const columnSpanNumber = parseInt(
+			attributes.style.layout.columnSpan,
+			10
+		);
+		newAttributes.style = {
+			...newAttributes.style,
+			layout: {
+				...newAttributes.style.layout,
+				columnSpan: isNaN( columnSpanNumber )
+					? undefined
+					: columnSpanNumber,
+			},
+		};
+	}
+	if ( typeof attributes.style?.layout?.rowSpan === 'string' ) {
+		const rowSpanNumber = parseInt( attributes.style.layout.rowSpan, 10 );
+		newAttributes.style = {
+			...newAttributes.style,
+			layout: {
+				...newAttributes.style.layout,
+				rowSpan: isNaN( rowSpanNumber ) ? undefined : rowSpanNumber,
+			},
+		};
+	}
+
+	// The following code is only relevant for the Gutenberg plugin.
+	// It's a stand-alone if statement for dead-code elimination.
+	if ( globalThis.IS_GUTENBERG_PLUGIN ) {
+		// Convert pattern overrides added during experimental phase.
+		// Only four blocks were supported initially.
+		// These checks can be removed in WordPress 6.6.
+		if (
+			newAttributes.metadata?.bindings &&
+			( name === 'core/paragraph' ||
+				name === 'core/heading' ||
+				name === 'core/image' ||
+				name === 'core/button' ) &&
+			newAttributes.metadata.bindings.__default?.source !==
+				'core/pattern-overrides'
+		) {
+			const bindings = [
+				'content',
+				'url',
+				'title',
+				'id',
+				'alt',
+				'text',
+				'linkTarget',
+			];
+			// Delete any existing individual bindings and add a default binding.
+			// It was only possible to add all the default attributes through the UI,
+			// So as soon as we find an attribute, we can assume all default attributes are overridable.
+			let hasPatternOverrides = false;
+			bindings.forEach( ( binding ) => {
+				if (
+					newAttributes.metadata.bindings[ binding ]?.source ===
+					'core/pattern-overrides'
+				) {
+					hasPatternOverrides = true;
+					newAttributes.metadata = {
+						...newAttributes.metadata,
+						bindings: { ...newAttributes.metadata.bindings },
+					};
+					delete newAttributes.metadata.bindings[ binding ];
+				}
+			} );
+			if ( hasPatternOverrides ) {
+				newAttributes.metadata.bindings.__default = {
+					source: 'core/pattern-overrides',
+				};
+			}
+		}
+	}
 	return [ name, newAttributes ];
 }

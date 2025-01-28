@@ -1,16 +1,8 @@
 /**
- * External dependencies
- */
-import { every } from 'lodash';
-
-/**
  * WordPress dependencies
  */
-import { createBlobURL } from '@wordpress/blob';
+import { createBlobURL, isBlobURL } from '@wordpress/blob';
 import { createBlock, getBlockAttributes } from '@wordpress/blocks';
-import { dispatch } from '@wordpress/data';
-import { store as noticesStore } from '@wordpress/notices';
-import { __ } from '@wordpress/i18n';
 
 export function stripFirstImage( attributes, { shortcode } ) {
 	const { body } = document.implementation.createHTMLDocument( '' );
@@ -19,7 +11,7 @@ export function stripFirstImage( attributes, { shortcode } ) {
 
 	let nodeToRemove = body.querySelector( 'img' );
 
-	// if an image has parents, find the topmost node to remove
+	// If an image has parents, find the topmost node to remove.
 	while (
 		nodeToRemove &&
 		nodeToRemove.parentNode &&
@@ -67,6 +59,7 @@ const schema = ( { phrasingContentSchema } ) => ( {
 			...imageSchema,
 			a: {
 				attributes: [ 'href', 'rel', 'target' ],
+				classes: [ '*' ],
 				children: imageSchema,
 			},
 			figcaption: {
@@ -90,9 +83,10 @@ const transforms = {
 					node.className +
 					' ' +
 					node.querySelector( 'img' ).className;
-				const alignMatches = /(?:^|\s)align(left|center|right)(?:$|\s)/.exec(
-					className
-				);
+				const alignMatches =
+					/(?:^|\s)align(left|center|right)(?:$|\s)/.exec(
+						className
+					);
 				const anchor = node.id === '' ? undefined : node.id;
 				const align = alignMatches ? alignMatches[ 1 ] : undefined;
 				const idMatches = /(?:^|\s)wp-image-(\d+)(?:$|\s)/.exec(
@@ -127,6 +121,12 @@ const transforms = {
 						anchor,
 					}
 				);
+
+				if ( isBlobURL( attributes.url ) ) {
+					attributes.blob = attributes.url;
+					delete attributes.url;
+				}
+
 				return createBlock( 'core/image', attributes );
 			},
 		},
@@ -136,32 +136,14 @@ const transforms = {
 			// creating a new gallery.
 			type: 'files',
 			isMatch( files ) {
-				// The following check is intended to catch non-image files when dropped together with images.
-				if (
-					files.some(
-						( file ) => file.type.indexOf( 'image/' ) === 0
-					) &&
-					files.some(
-						( file ) => file.type.indexOf( 'image/' ) !== 0
-					)
-				) {
-					const { createErrorNotice } = dispatch( noticesStore );
-					createErrorNotice(
-						__(
-							'If uploading to a gallery all files need to be image formats'
-						),
-						{ id: 'gallery-transform-invalid-file' }
-					);
-				}
-				return every(
-					files,
+				return files.every(
 					( file ) => file.type.indexOf( 'image/' ) === 0
 				);
 			},
 			transform( files ) {
 				const blocks = files.map( ( file ) => {
 					return createBlock( 'core/image', {
-						url: createBlobURL( file ),
+						blob: createBlobURL( file ),
 					} );
 				} );
 				return blocks;

@@ -1,37 +1,9 @@
 /**
  * External dependencies
  */
-import { extend, pick, isString, isEqual, forEach, isNumber } from 'lodash';
 import memize from 'memize';
 
-/**
- * Shortcode attributes object.
- *
- * @typedef {Object} WPShortcodeAttrs
- *
- * @property {Object} named   Object with named attributes.
- * @property {Array}  numeric Array with numeric attributes.
- */
-
-/**
- * Shortcode object.
- *
- * @typedef {Object} WPShortcode
- *
- * @property {string}           tag     Shortcode tag.
- * @property {WPShortcodeAttrs} attrs   Shortcode attributes.
- * @property {string}           content Shortcode content.
- * @property {string}           type    Shortcode type: `self-closing`,
- *                                      `closed`, or `single`.
- */
-
-/**
- * @typedef {Object} WPShortcodeMatch
- *
- * @property {number}      index     Index the shortcode is found at.
- * @property {string}      content   Matched content.
- * @property {WPShortcode} shortcode Shortcode instance of the match.
- */
+export * from './types';
 
 /**
  * Find the next matching shortcode.
@@ -40,7 +12,7 @@ import memize from 'memize';
  * @param {string} text  Text to search.
  * @param {number} index Index to start search from.
  *
- * @return {?WPShortcodeMatch} Matched information.
+ * @return {import('./types').ShortcodeMatch | undefined} Matched information.
  */
 export function next( tag, text, index = 0 ) {
 	const re = regexp( tag );
@@ -82,10 +54,10 @@ export function next( tag, text, index = 0 ) {
 /**
  * Replace matching shortcodes in a block of text.
  *
- * @param {string}   tag      Shortcode tag.
- * @param {string}   text     Text to search.
- * @param {Function} callback Function to process the match and return
- *                            replacement string.
+ * @param {string}                            tag      Shortcode tag.
+ * @param {string}                            text     Text to search.
+ * @param {import('./types').ReplaceCallback} callback Function to process the match and return
+ *                                                     replacement string.
  *
  * @return {string} Text with shortcodes replaced.
  */
@@ -170,7 +142,7 @@ export function regexp( tag ) {
  *
  * @param {string} text Serialised shortcode attributes.
  *
- * @return {WPShortcodeAttrs} Parsed shortcode attributes.
+ * @return {import('./types').ShortcodeAttrs} Parsed shortcode attributes.
  */
 export const attrs = memize( ( text ) => {
 	const named = {};
@@ -190,7 +162,8 @@ export const attrs = memize( ( text ) => {
 	// 7. A numeric attribute in double quotes.
 	// 8. A numeric attribute in single quotes.
 	// 9. An unquoted numeric attribute.
-	const pattern = /([\w-]+)\s*=\s*"([^"]*)"(?:\s|$)|([\w-]+)\s*=\s*'([^']*)'(?:\s|$)|([\w-]+)\s*=\s*([^\s'"]+)(?:\s|$)|"([^"]*)"(?:\s|$)|'([^']*)'(?:\s|$)|(\S+)(?:\s|$)/g;
+	const pattern =
+		/([\w-]+)\s*=\s*"([^"]*)"(?:\s|$)|([\w-]+)\s*=\s*'([^']*)'(?:\s|$)|([\w-]+)\s*=\s*([^\s'"]+)(?:\s|$)|"([^"]*)"(?:\s|$)|'([^']*)'(?:\s|$)|(\S+)(?:\s|$)/g;
 
 	// Map zero-width spaces to actual spaces.
 	text = text.replace( /[\u00a0\u200b]/g, ' ' );
@@ -224,9 +197,9 @@ export const attrs = memize( ( text ) => {
  * by `regexp()`. `match` can also be set to the `arguments` from a callback
  * passed to `regexp.replace()`.
  *
- * @param {Array} match Match array.
+ * @param {import('./types').Match} match Match array.
  *
- * @return {WPShortcode} Shortcode instance.
+ * @return {InstanceType<import('./types').shortcode>} Shortcode instance.
  */
 export function fromMatch( match ) {
 	let type;
@@ -255,18 +228,12 @@ export function fromMatch( match ) {
  * the `type` of the shortcode ('single', 'self-closing', or 'closed'), and a
  * `content` string.
  *
- * @param {Object} options Options as described.
- *
- * @return {WPShortcode} Shortcode instance.
+ * @type {import('./types').shortcode} Shortcode instance.
  */
-const shortcode = extend(
+const shortcode = Object.assign(
 	function ( options ) {
-		extend(
-			this,
-			pick( options || {}, 'tag', 'attrs', 'type', 'content' )
-		);
-
-		const attributes = this.attrs;
+		const { tag, attrs: attributes, type, content } = options || {};
+		Object.assign( this, { tag, type, content } );
 
 		// Ensure we have a correctly formatted `attrs` object.
 		this.attrs = {
@@ -278,17 +245,20 @@ const shortcode = extend(
 			return;
 		}
 
+		const attributeTypes = [ 'named', 'numeric' ];
+
 		// Parse a string of attributes.
-		if ( isString( attributes ) ) {
+		if ( typeof attributes === 'string' ) {
 			this.attrs = attrs( attributes );
 			// Identify a correctly formatted `attrs` object.
 		} else if (
-			isEqual( Object.keys( attributes ), [ 'named', 'numeric' ] )
+			attributes.length === attributeTypes.length &&
+			attributeTypes.every( ( t, key ) => t === attributes[ key ] )
 		) {
 			this.attrs = attributes;
 			// Handle a flat object of attributes.
 		} else {
-			forEach( attributes, ( value, key ) => {
+			Object.entries( attributes ).forEach( ( [ key, value ] ) => {
 				this.set( key, value );
 			} );
 		}
@@ -303,7 +273,7 @@ const shortcode = extend(
 	}
 );
 
-extend( shortcode.prototype, {
+Object.assign( shortcode.prototype, {
 	/**
 	 * Get a shortcode attribute.
 	 *
@@ -315,7 +285,9 @@ extend( shortcode.prototype, {
 	 * @return {string} Attribute value.
 	 */
 	get( attr ) {
-		return this.attrs[ isNumber( attr ) ? 'numeric' : 'named' ][ attr ];
+		return this.attrs[ typeof attr === 'number' ? 'numeric' : 'named' ][
+			attr
+		];
 	},
 
 	/**
@@ -327,10 +299,11 @@ extend( shortcode.prototype, {
 	 * @param {(number|string)} attr  Attribute key.
 	 * @param {string}          value Attribute value.
 	 *
-	 * @return {WPShortcode} Shortcode instance.
+	 * @return {InstanceType< import('./types').shortcode >} Shortcode instance.
 	 */
 	set( attr, value ) {
-		this.attrs[ isNumber( attr ) ? 'numeric' : 'named' ][ attr ] = value;
+		this.attrs[ typeof attr === 'number' ? 'numeric' : 'named' ][ attr ] =
+			value;
 		return this;
 	},
 
@@ -342,7 +315,7 @@ extend( shortcode.prototype, {
 	string() {
 		let text = '[' + this.tag;
 
-		forEach( this.attrs.numeric, ( value ) => {
+		this.attrs.numeric.forEach( ( value ) => {
 			if ( /\s/.test( value ) ) {
 				text += ' "' + value + '"';
 			} else {
@@ -350,7 +323,7 @@ extend( shortcode.prototype, {
 			}
 		} );
 
-		forEach( this.attrs.named, ( value, name ) => {
+		Object.entries( this.attrs.named ).forEach( ( [ name, value ] ) => {
 			text += ' ' + name + '="' + value + '"';
 		} );
 

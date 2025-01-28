@@ -1,11 +1,16 @@
 /**
  * WordPress dependencies
  */
-import { useEntityProp } from '@wordpress/core-data';
+import { useEntityProp, store as coreStore } from '@wordpress/core-data';
 import { SelectControl, TextControl } from '@wordpress/components';
 import { sprintf, __ } from '@wordpress/i18n';
-import { InspectorControls } from '@wordpress/block-editor';
 import { useSelect } from '@wordpress/data';
+
+/**
+ * Internal dependencies
+ */
+import { TemplatePartImportControls } from './import-controls';
+import { htmlElementMessages } from '../../utils/messages';
 
 export function TemplatePartAdvancedControls( {
 	tagName,
@@ -13,6 +18,7 @@ export function TemplatePartAdvancedControls( {
 	isEntityAvailable,
 	templatePartId,
 	defaultWrapper,
+	hasInnerBlocks,
 } ) {
 	const [ area, setArea ] = useEntityProp(
 		'postType',
@@ -28,26 +34,27 @@ export function TemplatePartAdvancedControls( {
 		templatePartId
 	);
 
-	const { areaOptions } = useSelect( ( select ) => {
-		// FIXME: @wordpress/block-library should not depend on @wordpress/editor.
-		// Blocks can be loaded into a *non-post* block editor.
-		// eslint-disable-next-line @wordpress/data-no-store-string-literals
-		const definedAreas = select(
-			'core/editor'
-		).__experimentalGetDefaultTemplatePartAreas();
-		return {
-			areaOptions: definedAreas.map( ( { label, area: _area } ) => ( {
-				label,
-				value: _area,
-			} ) ),
-		};
-	}, [] );
+	const defaultTemplatePartAreas = useSelect(
+		( select ) =>
+			select( coreStore ).getEntityRecord( 'root', '__unstableBase' )
+				?.default_template_part_areas || [],
+		[]
+	);
+
+	const areaOptions = defaultTemplatePartAreas.map(
+		( { label, area: _area } ) => ( {
+			label,
+			value: _area,
+		} )
+	);
 
 	return (
-		<InspectorControls __experimentalGroup="advanced">
+		<>
 			{ isEntityAvailable && (
 				<>
 					<TextControl
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
 						label={ __( 'Title' ) }
 						value={ title }
 						onChange={ ( value ) => {
@@ -55,8 +62,9 @@ export function TemplatePartAdvancedControls( {
 						} }
 						onFocus={ ( event ) => event.target.select() }
 					/>
-
 					<SelectControl
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
 						label={ __( 'Area' ) }
 						labelPosition="top"
 						options={ areaOptions }
@@ -66,6 +74,8 @@ export function TemplatePartAdvancedControls( {
 				</>
 			) }
 			<SelectControl
+				__nextHasNoMarginBottom
+				__next40pxDefaultSize
 				label={ __( 'HTML element' ) }
 				options={ [
 					{
@@ -86,7 +96,14 @@ export function TemplatePartAdvancedControls( {
 				] }
 				value={ tagName || '' }
 				onChange={ ( value ) => setAttributes( { tagName: value } ) }
+				help={ htmlElementMessages[ tagName ] }
 			/>
-		</InspectorControls>
+			{ ! hasInnerBlocks && (
+				<TemplatePartImportControls
+					area={ area }
+					setAttributes={ setAttributes }
+				/>
+			) }
+		</>
 	);
 }

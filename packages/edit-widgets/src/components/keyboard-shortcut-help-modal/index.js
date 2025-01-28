@@ -1,8 +1,7 @@
 /**
  * External dependencies
  */
-import classnames from 'classnames';
-import { isString } from 'lodash';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
@@ -37,7 +36,7 @@ const ShortcutList = ( { shortcuts } ) => (
 				className="edit-widgets-keyboard-shortcut-help-modal__shortcut"
 				key={ index }
 			>
-				{ isString( shortcut ) ? (
+				{ typeof shortcut === 'string' ? (
 					<DynamicShortcut name={ shortcut } />
 				) : (
 					<Shortcut { ...shortcut } />
@@ -50,7 +49,7 @@ const ShortcutList = ( { shortcuts } ) => (
 
 const ShortcutSection = ( { title, shortcuts, className } ) => (
 	<section
-		className={ classnames(
+		className={ clsx(
 			'edit-widgets-keyboard-shortcut-help-modal__section',
 			className
 		) }
@@ -102,7 +101,6 @@ export default function KeyboardShortcutHelpModal( {
 		<Modal
 			className="edit-widgets-keyboard-shortcut-help-modal"
 			title={ __( 'Keyboard shortcuts' ) }
-			closeLabel={ __( 'Close' ) }
 			onRequestClose={ toggleModal }
 		>
 			<ShortcutSection
@@ -136,6 +134,10 @@ export default function KeyboardShortcutHelpModal( {
 			<ShortcutSection
 				title={ __( 'Text formatting' ) }
 				shortcuts={ textFormattingShortcuts }
+			/>
+			<ShortcutCategorySection
+				title={ __( 'List View shortcuts' ) }
+				categoryName="list-view"
 			/>
 		</Modal>
 	);

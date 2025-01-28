@@ -6,21 +6,21 @@
 
 `Card` also provides a convenient set of [sub-components](#sub-components) such as `CardBody`, `CardHeader`, `CardFooter`, and more (see below).
 
-```jsx live
+```jsx
 import {
 	Card,
 	CardHeader,
 	CardBody,
 	CardFooter,
-	Text,
-	Heading,
+	__experimentalText as Text,
+	__experimentalHeading as Heading,
 } from '@wordpress/components';
 
 function Example() {
 	return (
 		<Card>
 			<CardHeader>
-				<Heading size={ 4 }>Card Title</Heading>
+				<Heading level={ 4 }>Card Title</Heading>
 			</CardHeader>
 			<CardBody>
 				<Text>Card Content</Text>
@@ -66,7 +66,7 @@ Determines the amount of padding within the component.
 
 ### Inherited props
 
-`Card` also inherits all of the [`Surface` props](/packages/components/src/ui/surface/README.md#props).
+`Card` also inherits all of the [`Surface` props](/packages/components/src/surface/README.md#props).
 
 ## Sub-Components
 
@@ -99,14 +99,14 @@ const Example = () => (
 		<CardMedia>
 			<img src="..." />
 		</CardMedia>
-		<CardHeader>...</CardHeader>
+		<CardFooter>...</CardFooter>
 	</Card>
 );
 ```
 
 ### Context
 
-`<Card />`'s sub-components are connected to `<Card />` using [Context](https://reactjs.org/docs/context.html). Certain props like `size` and `isBorderless` are passed through to some of the sub-components.
+`<Card />`'s sub-components are connected to `<Card />` using [Context](https://react.dev/learn/passing-data-deeply-with-context). Certain props like `size` and `isBorderless` are passed through to some of the sub-components.
 
 In the following example, the `<CardBody />` will render with a size of `small`:
 

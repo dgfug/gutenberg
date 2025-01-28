@@ -1,12 +1,7 @@
 /**
- * External dependencies
- */
-import { keyBy } from 'lodash';
-
-/**
  * WordPress dependencies
  */
-import { createRegistrySelector } from '@wordpress/data';
+import { createSelector, createRegistrySelector } from '@wordpress/data';
 import { getWidgetIdFromBlock } from '@wordpress/widgets';
 import { store as coreStore } from '@wordpress/core-data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
@@ -24,20 +19,45 @@ import {
 } from './utils';
 import { STORE_NAME as editWidgetsStoreName } from './constants';
 
+const EMPTY_INSERTION_POINT = {
+	rootClientId: undefined,
+	insertionIndex: undefined,
+};
+
 /**
  * Returns all API widgets.
  *
  * @return {Object[]} API List of widgets.
  */
-export const getWidgets = createRegistrySelector( ( select ) => () => {
-	const widgets = select( coreStore ).getEntityRecords(
-		'root',
-		'widget',
-		buildWidgetsQuery()
-	);
+export const getWidgets = createRegistrySelector( ( select ) =>
+	createSelector(
+		() => {
+			const widgets = select( coreStore ).getEntityRecords(
+				'root',
+				'widget',
+				buildWidgetsQuery()
+			);
 
-	return keyBy( widgets, 'id' );
-} );
+			return (
+				// Key widgets by their ID.
+				widgets?.reduce(
+					( allWidgets, widget ) => ( {
+						...allWidgets,
+						[ widget.id ]: widget,
+					} ),
+					{}
+				) ?? {}
+			);
+		},
+		() => [
+			select( coreStore ).getEntityRecords(
+				'root',
+				'widget',
+				buildWidgetsQuery()
+			),
+		]
+	)
+);
 
 /**
  * Returns API widget data for a particular widget ID.
@@ -99,9 +119,8 @@ export const getWidgetAreaForWidgetId = createRegistrySelector(
  */
 export const getParentWidgetAreaBlock = createRegistrySelector(
 	( select ) => ( state, clientId ) => {
-		const { getBlock, getBlockName, getBlockParents } = select(
-			blockEditorStore
-		);
+		const { getBlock, getBlockName, getBlockParents } =
+			select( blockEditorStore );
 		const blockParents = getBlockParents( clientId );
 		const widgetAreaClientId = blockParents.find(
 			( parentClientId ) =>
@@ -152,28 +171,29 @@ export const getEditedWidgetAreas = createRegistrySelector(
  * @return {Array}  List of all blocks representing reference widgets
  */
 export const getReferenceWidgetBlocks = createRegistrySelector(
-	( select ) => ( state, referenceWidgetName = null ) => {
-		const results = [];
-		const widgetAreas = select( editWidgetsStoreName ).getWidgetAreas();
-		for ( const _widgetArea of widgetAreas ) {
-			const post = select( coreStore ).getEditedEntityRecord(
-				KIND,
-				POST_TYPE,
-				buildWidgetAreaPostId( _widgetArea.id )
-			);
-			for ( const block of post.blocks ) {
-				if (
-					block.name === 'core/legacy-widget' &&
-					( ! referenceWidgetName ||
-						block.attributes?.referenceWidgetName ===
-							referenceWidgetName )
-				) {
-					results.push( block );
+	( select ) =>
+		( state, referenceWidgetName = null ) => {
+			const results = [];
+			const widgetAreas = select( editWidgetsStoreName ).getWidgetAreas();
+			for ( const _widgetArea of widgetAreas ) {
+				const post = select( coreStore ).getEditedEntityRecord(
+					KIND,
+					POST_TYPE,
+					buildWidgetAreaPostId( _widgetArea.id )
+				);
+				for ( const block of post.blocks ) {
+					if (
+						block.name === 'core/legacy-widget' &&
+						( ! referenceWidgetName ||
+							block.attributes?.referenceWidgetName ===
+								referenceWidgetName )
+					) {
+						results.push( block );
+					}
 				}
 			}
+			return results;
 		}
-		return results;
-	}
 );
 
 /**
@@ -250,8 +270,11 @@ export function isInserterOpened( state ) {
  * @return {Object} The root client ID and index to insert at.
  */
 export function __experimentalGetInsertionPoint( state ) {
-	const { rootClientId, insertionIndex } = state.blockInserterPanel;
-	return { rootClientId, insertionIndex };
+	if ( typeof state.blockInserterPanel === 'boolean' ) {
+		return EMPTY_INSERTION_POINT;
+	}
+
+	return state.blockInserterPanel;
 }
 
 /**

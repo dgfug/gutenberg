@@ -1,26 +1,79 @@
 # Schemas
 
-The collection of schemas used in WordPress, including the `theme.json` schema, and `block.json` schemas.
+The collection of schemas used in WordPress, including the `theme.json`, `block.json` and `font-collection.json` schemas.
 
-## Usage
+JSON schemas are used by code editors to offer tooltips, autocomplete, and validation.
 
-JSON schemas are used by code editors to offer tooltips, autocomplete, and validation. To use in your JSON file, add the `$schema` property to the top of the file with the value of the schema URL.
+## JSON schema usage
 
-For example, in your `block.json` file you would add:
+Many editors recognize the `$schema` property in JSON files.
+
+Update your `block.json` to include:
 
 ```json
 {
-	"$schema": "https://raw.githubusercontent.com/WordPress/gutenberg/trunk/schemas/json/block.json"
+	"$schema": "https://schemas.wp.org/trunk/block.json"
 }
 ```
 
-## SchemaStore.org
+Or in your `theme.json`:
 
-[SchemaStore.org](https://schemastore.org) is an open collection of schemas, including the WordPress `theme.json` and `block.json` schemas. Any changes to schemas in this package should be mirror there.
+```json
+{
+	"$schema": "https://schemas.wp.org/trunk/theme.json"
+}
+```
 
-To update on SchemaStore, create a PR at their repository [SchemaStore/schemastore](https://github.com/SchemaStore/schemastore/). The files can be found in their reposiory at:
+Or in your `font-collection.json`:
 
--   block.json: `src/schemas/json/block.json`
--   theme.json: `src/schemas/json/theme-v1.json`
+```json
+{
+	"$schema": "https://schemas.wp.org/trunk/font-collection.json"
+}
+```
+
+For a specific version of the schema, replace `trunk` with `wp/X.X`:
+
+```json
+{
+	"$schema": "https://schemas.wp.org/wp/5.8/block.json"
+}
+```
+
+Visual Studio Code and PhpStorm are two popular editors that work out of the box. However, some editors require a plugin installed, and not all editors recognize the `$schema` property. Check your editor's documentation for details. Additionally, [SchemaStore.org](https://www.schemastore.org/) and [JSON Schema](https://json-schema.org/implementations.html#editors) have lists of editors known to have support if your current editor is unsupported.
+
+## Local Development
+
+You may wish to update one of the schemas to conform to a new change in the structure. In order to do this you'll want to be able to see how your changes impact how your IDE displays schema information.
+
+To allow this you will need to:
+
+-   update your theme's `theme.json` to reference the _local_ version of the schema file:
+
+```json
+{
+	"$schema": "file://{{FULL_FILE_PATH}}/schemas/json/theme.json"
+}
+```
+
+-   update your block's `block.json` to include:
+
+```json
+{
+	"$schema": "file://{{FULL_FILE_PATH}}/schemas/json/block.json"
+}
+```
+
+-   update your font collections's `font-collection.json` to include:
+
+```json
+{
+	"$schema": "file://{{FULL_FILE_PATH}}/schemas/json/font-collection.json"
+}
+```
+
+Be sure to replace `{{FULL_FILE_PATH}}` with the full local path to your Gutenberg repo.
+
+With this in place you should now be able to edit either `schemas/json/theme .json`, `schemas/json/block.json` or `schemas/json/font-collection.json` in order to see changes reflected in `theme.json`, `block.json` or `font-collection.json` in your IDE.
 
 <br/><br/><p align="center"><img src="https://s.w.org/style/images/codeispoetry.png?1" alt="Code is Poetry." /></p>

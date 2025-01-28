@@ -8,7 +8,8 @@ import {
 	store as blocksStore,
 } from '@wordpress/blocks';
 import { dispatch } from '@wordpress/data';
-import { render, unmountComponentAtNode } from '@wordpress/element';
+import deprecated from '@wordpress/deprecated';
+import { StrictMode, createRoot } from '@wordpress/element';
 import {
 	registerCoreBlocks,
 	__experimentalGetCoreBlocks,
@@ -20,7 +21,7 @@ import {
 	registerLegacyWidgetVariations,
 	registerWidgetGroupBlock,
 } from '@wordpress/widgets';
-import { store as interfaceStore } from '@wordpress/interface';
+import { store as preferencesStore } from '@wordpress/preferences';
 
 /**
  * Internal dependencies
@@ -28,7 +29,6 @@ import { store as interfaceStore } from '@wordpress/interface';
 import './store';
 import './filters';
 import * as widgetArea from './blocks/widget-area';
-
 import Layout from './components/layout';
 import {
 	ALLOW_REUSABLE_BLOCKS,
@@ -43,31 +43,15 @@ const disabledBlocks = [
 ];
 
 /**
- * Reinitializes the editor after the user chooses to reboot the editor after
- * an unhandled error occurs, replacing previously mounted editor element using
- * an initial state from prior to the crash.
- *
- * @param {Element} target   DOM node in which editor is rendered.
- * @param {?Object} settings Editor settings object.
- */
-export function reinitializeEditor( target, settings ) {
-	unmountComponentAtNode( target );
-	const reboot = reinitializeEditor.bind( null, target, settings );
-	render(
-		<Layout blockEditorSettings={ settings } onError={ reboot } />,
-		target
-	);
-}
-
-/**
  * Initializes the block editor in the widgets screen.
  *
  * @param {string} id       ID of the root element to render the screen in.
  * @param {Object} settings Block editor settings.
  */
-export function initialize( id, settings ) {
+export function initializeEditor( id, settings ) {
 	const target = document.getElementById( id );
-	const reboot = reinitializeEditor.bind( null, target, settings );
+	const root = createRoot( target );
+
 	const coreBlocks = __experimentalGetCoreBlocks().filter( ( block ) => {
 		return ! (
 			disabledBlocks.includes( block.name ) ||
@@ -78,17 +62,17 @@ export function initialize( id, settings ) {
 		);
 	} );
 
-	dispatch( interfaceStore ).setFeatureDefaults( 'core/edit-widgets', {
+	dispatch( preferencesStore ).setDefaults( 'core/edit-widgets', {
 		fixedToolbar: false,
 		welcomeGuide: true,
 		showBlockBreadcrumbs: true,
 		themeStyles: true,
 	} );
 
-	dispatch( blocksStore ).__experimentalReapplyBlockTypeFilters();
+	dispatch( blocksStore ).reapplyBlockTypeFilters();
 	registerCoreBlocks( coreBlocks );
 	registerLegacyWidgetBlock();
-	if ( process.env.GUTENBERG_PHASE === 2 ) {
+	if ( globalThis.IS_GUTENBERG_PLUGIN ) {
 		__experimentalRegisterExperimentalCoreBlocks( {
 			enableFSEBlocks: ENABLE_EXPERIMENTAL_FSE_BLOCKS,
 		} );
@@ -105,17 +89,32 @@ export function initialize( id, settings ) {
 	// do this will result in errors in the default block parser.
 	// see: https://github.com/WordPress/gutenberg/issues/33097
 	setFreeformContentHandlerName( 'core/html' );
-	render(
-		<Layout blockEditorSettings={ settings } onError={ reboot } />,
-		target
+
+	root.render(
+		<StrictMode>
+			<Layout blockEditorSettings={ settings } />
+		</StrictMode>
 	);
+
+	return root;
+}
+
+/**
+ * Compatibility export under the old `initialize` name.
+ */
+export const initialize = initializeEditor;
+
+export function reinitializeEditor() {
+	deprecated( 'wp.editWidgets.reinitializeEditor', {
+		since: '6.2',
+		version: '6.3',
+	} );
 }
 
 /**
  * Function to register an individual block.
  *
  * @param {Object} block The block to be registered.
- *
  */
 const registerBlock = ( block ) => {
 	if ( ! block ) {
@@ -127,3 +126,5 @@ const registerBlock = ( block ) => {
 	}
 	registerBlockType( name, settings );
 };
+
+export { store } from './store';

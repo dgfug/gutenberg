@@ -1,12 +1,11 @@
 [
 	{
-		"clientId": "_clientId_0",
 		"name": "core/block",
 		"isValid": true,
 		"attributes": {
-			"ref": 123
+			"ref": 123,
+			"content": {}
 		},
-		"innerBlocks": [],
-		"originalContent": ""
+		"innerBlocks": []
 	}
 ]

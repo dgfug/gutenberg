@@ -1,30 +1,37 @@
 /**
- * External dependencies
- */
-import { noop } from 'lodash';
-
-/**
  * WordPress dependencies
  */
 import { __ } from '@wordpress/i18n';
 import { MenuItem } from '@wordpress/components';
 import { getBlockType, hasBlockSupport } from '@wordpress/blocks';
-import { withSelect, withDispatch } from '@wordpress/data';
-import { compose } from '@wordpress/compose';
+import { useDispatch, useSelect } from '@wordpress/data';
 
 /**
  * Internal dependencies
  */
 import { store as blockEditorStore } from '../../store';
 
-export function BlockModeToggle( {
-	blockType,
-	mode,
-	onToggleMode,
-	small = false,
-	isCodeEditingEnabled = true,
-} ) {
+const noop = () => {};
+
+export default function BlockModeToggle( { clientId, onToggle = noop } ) {
+	const { blockType, mode, isCodeEditingEnabled } = useSelect(
+		( select ) => {
+			const { getBlock, getBlockMode, getSettings } =
+				select( blockEditorStore );
+			const block = getBlock( clientId );
+
+			return {
+				mode: getBlockMode( clientId ),
+				blockType: block ? getBlockType( block.name ) : null,
+				isCodeEditingEnabled: getSettings().codeEditingEnabled,
+			};
+		},
+		[ clientId ]
+	);
+	const { toggleBlockMode } = useDispatch( blockEditorStore );
+
 	if (
+		! blockType ||
 		! hasBlockSupport( blockType, 'html', true ) ||
 		! isCodeEditingEnabled
 	) {
@@ -34,27 +41,14 @@ export function BlockModeToggle( {
 	const label =
 		mode === 'visual' ? __( 'Edit as HTML' ) : __( 'Edit visually' );
 
-	return <MenuItem onClick={ onToggleMode }>{ ! small && label }</MenuItem>;
+	return (
+		<MenuItem
+			onClick={ () => {
+				toggleBlockMode( clientId );
+				onToggle();
+			} }
+		>
+			{ label }
+		</MenuItem>
+	);
 }
-
-export default compose( [
-	withSelect( ( select, { clientId } ) => {
-		const { getBlock, getBlockMode, getSettings } = select(
-			blockEditorStore
-		);
-		const block = getBlock( clientId );
-		const isCodeEditingEnabled = getSettings().codeEditingEnabled;
-
-		return {
-			mode: getBlockMode( clientId ),
-			blockType: block ? getBlockType( block.name ) : null,
-			isCodeEditingEnabled,
-		};
-	} ),
-	withDispatch( ( dispatch, { onToggle = noop, clientId } ) => ( {
-		onToggleMode() {
-			dispatch( blockEditorStore ).toggleBlockMode( clientId );
-			onToggle();
-		},
-	} ) ),
-] )( BlockModeToggle );

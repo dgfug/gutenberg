@@ -1,6 +1,11 @@
 /**
  * WordPress dependencies
  */
+import deprecated from '@wordpress/deprecated';
+
+/**
+ * WordPress dependencies
+ */
 import { Button, Dropdown } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { useSelect } from '@wordpress/data';
@@ -22,6 +27,7 @@ function BlockNavigationDropdownToggle( {
 } ) {
 	return (
 		<Button
+			__next40pxDefaultSize
 			{ ...props }
 			ref={ innerRef }
 			icon={ listView }
@@ -36,10 +42,12 @@ function BlockNavigationDropdownToggle( {
 	);
 }
 
-function BlockNavigationDropdown(
-	{ isDisabled, __experimentalFeatures, ...props },
-	ref
-) {
+function BlockNavigationDropdown( { isDisabled, ...props }, ref ) {
+	deprecated( 'wp.blockEditor.BlockNavigationDropdown', {
+		since: '6.1',
+		alternative: 'wp.components.Dropdown and wp.blockEditor.ListView',
+	} );
+
 	const hasBlocks = useSelect(
 		( select ) => !! select( blockEditorStore ).getBlockCount(),
 		[]
@@ -49,7 +57,7 @@ function BlockNavigationDropdown(
 	return (
 		<Dropdown
 			contentClassName="block-editor-block-navigation__popover"
-			position="bottom right"
+			popoverProps={ { placement: 'bottom-start' } }
 			renderToggle={ ( { isOpen, onToggle } ) => (
 				<BlockNavigationDropdownToggle
 					{ ...props }
@@ -65,10 +73,7 @@ function BlockNavigationDropdown(
 						{ __( 'List view' ) }
 					</p>
 
-					<ListView
-						showNestedBlocks
-						__experimentalFeatures={ __experimentalFeatures }
-					/>
+					<ListView />
 				</div>
 			) }
 		/>

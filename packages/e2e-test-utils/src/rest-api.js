@@ -12,7 +12,7 @@ import apiFetch from '@wordpress/api-fetch';
 /**
  * Internal dependencies
  */
-import { WP_BASE_URL } from './shared/config';
+import { WP_BASE_URL, WP_USERNAME, WP_PASSWORD } from './shared/config';
 import { createURL } from './create-url';
 
 // `apiFetch` expects `window.fetch` to be available in its default handler.
@@ -35,10 +35,10 @@ Link header: ${ links }` );
 	apiFetch.use( apiFetch.createRootURLMiddleware( rootURL ) );
 } )();
 
-const setNonce = ( async () => {
+async function login( retries = 3 ) {
 	const formData = new FormData();
-	formData.append( 'log', 'admin' );
-	formData.append( 'pwd', 'password' );
+	formData.append( 'log', WP_USERNAME );
+	formData.append( 'pwd', WP_PASSWORD );
 
 	// Login to admin using fetch.
 	const loginResponse = await fetch( createURL( 'wp-login.php' ), {
@@ -61,10 +61,33 @@ const setNonce = ( async () => {
 	);
 
 	// Get the initial nonce.
-	const res = await fetch( apiFetch.nonceEndpoint, {
+	const response = await fetch( apiFetch.nonceEndpoint, {
 		headers: { cookie },
 	} );
-	const nonce = await res.text();
+
+	if ( response.status === 200 ) {
+		return {
+			response,
+			cookie,
+		};
+	}
+
+	// Sometimes the nonce call will fail if a test has forced a new login
+	// and invalidated the cookie, so retry the login in these instances.
+	if ( retries > 0 ) {
+		return login( retries - 1 );
+	}
+
+	throw new Error(
+		`Fetch api call failed for ${ apiFetch.nonceEndpoint }: ${ response.status }`
+	);
+}
+
+const setNonce = ( async () => {
+	// Get the initial nonce.
+	const loginRequest = await login();
+
+	const nonce = await loginRequest.response.text();
 
 	// Register the nonce middleware.
 	apiFetch.use( apiFetch.createNonceMiddleware( nonce ) );
@@ -75,7 +98,7 @@ const setNonce = ( async () => {
 			...request,
 			headers: {
 				...request.headers,
-				cookie,
+				cookie: loginRequest.cookie,
 			},
 		} );
 	} );

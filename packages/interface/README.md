@@ -27,25 +27,25 @@ Below are some examples of how to control the active complementary area using th
 ```js
 wp.data
 	.select( 'core/interface' )
-	.getActiveComplementaryArea( 'core/edit-post' );
+	.getActiveComplementaryArea( 'core' );
 // -> "edit-post/document"
 
 wp.data
 	.dispatch( 'core/interface' )
-	.enableComplementaryArea( 'core/edit-post', 'edit-post/block' );
+	.enableComplementaryArea( 'core', 'edit-post/block' );
 
 wp.data
 	.select( 'core/interface' )
-	.getActiveComplementaryArea( 'core/edit-post' );
+	.getActiveComplementaryArea( 'core' );
 // -> "edit-post/block"
 
 wp.data
 	.dispatch( 'core/interface' )
-	.disableComplementaryArea( 'core/edit-post' );
+	.disableComplementaryArea( 'core' );
 
 wp.data
 	.select( 'core/interface' )
-	.getActiveComplementaryArea( 'core/edit-post' );
+	.getActiveComplementaryArea( 'core' );
 // -> null
 ```
 
@@ -56,20 +56,18 @@ wp.data
 Example usage: `ComplementaryArea` component makes use of `PinnedItems` and automatically adds a pinned item for the complementary areas marked as a favorite.
 
 ```js
-wp.data.select( 'core/interface' ).isItemPinned( 'core/edit-post', 'edit-post-block-patterns/block-patterns-sidebar' );
+wp.data.select( 'core/interface' ).isItemPinned( 'core', 'edit-post-block-patterns/block-patterns-sidebar' );
 // -> false
 
-wp.data.dispatch( 'core/interface' ).pinItem( 'core/edit-post', 'edit-post-block-patterns/block-patterns-sidebar' );
+wp.data.dispatch( 'core/interface' ).pinItem( 'core', 'edit-post-block-patterns/block-patterns-sidebar' );
 
-wp.data.select( 'core/interface' ).isItemPinned( 'core/edit-post', 'edit-post-block-patterns/block-patterns-sidebar' );
+wp.data.select( 'core/interface' ).isItemPinned( 'core', 'edit-post-block-patterns/block-patterns-sidebar' );
 // -> true
 
-wp.data.dispatch( 'core/interface' ).unpinItem( 'core/edit-post', 'edit-post-block-patterns/block-patterns-sidebar' );
+wp.data.dispatch( 'core/interface' ).unpinItem( 'core', 'edit-post-block-patterns/block-patterns-sidebar' );
 
-wp.data.select( 'core/interface' ).isItemPinned( 'core/edit-post', 'edit-post-block-patterns/block-patterns-sidebar' ); -> false
+wp.data.select( 'core/interface' ).isItemPinned( 'core', 'edit-post-block-patterns/block-patterns-sidebar' ); -> false
 ```
-
-<br/><br/><p align="center"><img src="https://s.w.org/style/images/codeispoetry.png?1" alt="Code is Poetry." /></p>
 
 ### Preferences
 
@@ -113,25 +111,10 @@ wp.data
 	.isFeatureActive( 'namespace/editor-or-plugin-name', 'myFeatureName' ); // false
 ```
 
-The `MoreMenuDropdown` and `MoreMenuFeatureToggle` components help to implement an editor menu for changing preferences and feature values.
+## Contributing to this package
 
-```jsx
-function MyEditorMenu() {
-	return (
-		<MoreMenuDropdown>
-			{ () => (
-				<MenuGroup label={ __( 'Features' ) }>
-					<MoreMenuFeatureToggle
-						scope="namespace/editor-or-plugin-name"
-						feature="myFeatureName"
-						label={ __( 'My feature' ) }
-						info={ __( 'A really awesome feature' ) }
-						messageActivated={ __( 'My feature activated' ) }
-						messageDeactivated={ __( 'My feature deactivated' ) }
-					/>
-				</MenuGroup>
-			) }
-		</MoreMenuDropdown>
-	);
-}
-```
+This is an individual package that's part of the Gutenberg project. The project is organized as a monorepo. It's made up of multiple self-contained software packages, each with a specific purpose. The packages in this monorepo are published to [npm](https://www.npmjs.com/) and used by [WordPress](https://make.wordpress.org/core/) as well as other software projects.
+
+To find out more about contributing to this package or Gutenberg as a whole, please read the project's main [contributor guide](https://github.com/WordPress/gutenberg/tree/HEAD/CONTRIBUTING.md).
+
+<br /><br /><p align="center"><img src="https://s.w.org/style/images/codeispoetry.png?1" alt="Code is Poetry." /></p>

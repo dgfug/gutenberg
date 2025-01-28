@@ -1,44 +1,27 @@
 <?php
 /**
- * Class that implements a theme.json schema migration.
+ * WP_Theme_JSON_Schema_Gutenberg class
  *
- * @package gutenberg
+ * @package Gutenberg
+ * @since 5.9.0
  */
+
+if ( class_exists( 'WP_Theme_JSON_Schema_Gutenberg' ) ) {
+	return;
+}
 
 /**
- * Class that migrates a given structure in v0 schema to one
- * that follows the v1 schema.
+ * Class that migrates a given theme.json structure to the latest schema.
+ *
+ * This class is for internal core usage and is not supposed to be used by extenders (plugins and/or themes).
+ * This is a low-level API that may need to do breaking changes. Please,
+ * use get_global_settings, get_global_styles, and get_global_stylesheet instead.
+ *
+ * @since 5.9.0
+ * @access private
  */
+#[AllowDynamicProperties]
 class WP_Theme_JSON_Schema_Gutenberg {
-
-	/**
-	 * How to address all the blocks
-	 * in the v0 of the theme.json file.
-	 */
-	const V0_ALL_BLOCKS_NAME = 'defaults';
-
-	/**
-	 * How to address the root block
-	 * in the v0 of the theme.json file.
-	 *
-	 * @var string
-	 */
-	const V0_ROOT_BLOCK_NAME = 'root';
-
-	/**
-	 * Maps old properties to their new location within the schema's settings for v1.
-	 * This will be applied at both the defaults and individual block levels.
-	 */
-	const V1_RENAMED_PATHS = array(
-		'border.customColor'               => 'border.color',
-		'border.customStyle'               => 'border.style',
-		'border.customWidth'               => 'border.width',
-		'typography.customFontStyle'       => 'typography.fontStyle',
-		'typography.customFontWeight'      => 'typography.fontWeight',
-		'typography.customLetterSpacing'   => 'typography.letterSpacing',
-		'typography.customTextDecorations' => 'typography.textDecoration',
-		'typography.customTextTransforms'  => 'typography.textTransform',
-	);
 
 	/**
 	 * Maps old properties to their new location within the schema's settings.
@@ -54,348 +37,32 @@ class WP_Theme_JSON_Schema_Gutenberg {
 	/**
 	 * Function that migrates a given theme.json structure to the last version.
 	 *
-	 * @param array $theme_json The structure to migrate.
+	 * @since 5.9.0
+	 * @since 6.6.0 Migrate up to v3.
+	 *
+	 * @param array  $theme_json The structure to migrate.
+	 * @param string $origin     Optional. What source of data this object represents.
+	 *                           One of 'blocks', 'default', 'theme', or 'custom'. Default 'theme'.
 	 *
 	 * @return array The structure in the last version.
 	 */
-	public static function migrate( $theme_json ) {
-		// Can be removed when the plugin minimum required version is WordPress 5.8.
-		// This doesn't need to land in WordPress core.
-		if ( ! isset( $theme_json['version'] ) || 0 === $theme_json['version'] ) {
-			$theme_json = self::migrate_v0_to_v1( $theme_json );
+	public static function migrate( $theme_json, $origin = 'theme' ) {
+		if ( ! isset( $theme_json['version'] ) ) {
+			$theme_json = array(
+				'version' => WP_Theme_JSON::LATEST_SCHEMA,
+			);
 		}
 
-		// Provide backwards compatibility for settings that did not land in 5.8
-		// and have had their `custom` prefixed removed since.
-		// Can be removed when the plugin minimum required version is WordPress 5.9.
-		// This doesn't need to land in WordPress core.
-		if ( 1 === $theme_json['version'] ) {
-			$theme_json = self::migrate_v1_remove_custom_prefixes( $theme_json );
-		}
-
-		if ( 1 === $theme_json['version'] ) {
-			$theme_json = self::migrate_v1_to_v2( $theme_json );
+		// Migrate each version in order starting with the current version.
+		switch ( $theme_json['version'] ) {
+			case 1:
+				$theme_json = self::migrate_v1_to_v2( $theme_json );
+				// Deliberate fall through. Once migrated to v2, also migrate to v3.
+			case 2:
+				$theme_json = self::migrate_v2_to_v3( $theme_json, $origin );
 		}
 
 		return $theme_json;
-	}
-
-	/**
-	 * Converts a v0 data structure into a v1 one.
-	 *
-	 * It expects input data to come in v0 form:
-	 *
-	 * {
-	 *   'root': {
-	 *     'settings': { ... },
-	 *     'styles': { ... }
-	 *   }
-	 *   'core/paragraph': {
-	 *     'styles': { ... },
-	 *     'settings': { ... }
-	 *   },
-	 *   'core/heading/h1': {
-	 *     'settings': { ... }
-	 *     'styles': { ... }
-	 *   },
-	 *   'core/heading/h2': {
-	 *     'settings': { ... }
-	 *     'styles': { ... }
-	 *   },
-	 * }
-	 *
-	 * And it will return v1 form:
-	 *
-	 * {
-	 *   'settings': {
-	 *     'border': { ... }
-	 *     'color': { ... },
-	 *     'typography': { ... },
-	 *     'spacing': { ... },
-	 *     'custom': { ... },
-	 *     'blocks': {
-	 *       'core/paragraph': { ... }
-	 *     }
-	 *   },
-	 *   styles: {
-	 *     border: { ... }
-	 *     color: { ... },
-	 *     typography: { ... },
-	 *     spacing: { ... },
-	 *     custom: { ... },
-	 *     blocks: {
-	 *       core/paragraph: { ... }
-	 *       core/heading: {
-	 *         elements: {
-	 *           h1: { ... },
-	 *           h2: { ... }
-	 *         }
-	 *       }
-	 *     }
-	 *   }
-	 * }
-	 *
-	 * @param array $old Data in v0 schema.
-	 *
-	 * @return array Data in v1 schema.
-	 */
-	private static function migrate_v0_to_v1( $old ) {
-		// Copy everything.
-		$new = $old;
-
-		// Overwrite the things that change.
-		if ( isset( $old['settings'] ) ) {
-			$new['settings'] = self::migrate_v0_to_v1_process_settings( $old['settings'] );
-		}
-		if ( isset( $old['styles'] ) ) {
-			$new['styles'] = self::migrate_v0_to_v1_process_styles( $old['styles'] );
-		}
-
-		$new['version'] = 1;
-
-		return $new;
-	}
-
-	/**
-	 * Processes the settings subtree.
-	 *
-	 * @param array $settings Array to process.
-	 *
-	 * @return array The settings in the new format.
-	 */
-	private static function migrate_v0_to_v1_process_settings( $settings ) {
-		$new                   = array();
-		$blocks_to_consolidate = array(
-			'core/heading/h1'     => 'core/heading',
-			'core/heading/h2'     => 'core/heading',
-			'core/heading/h3'     => 'core/heading',
-			'core/heading/h4'     => 'core/heading',
-			'core/heading/h5'     => 'core/heading',
-			'core/heading/h6'     => 'core/heading',
-			'core/post-title/h1'  => 'core/post-title',
-			'core/post-title/h2'  => 'core/post-title',
-			'core/post-title/h3'  => 'core/post-title',
-			'core/post-title/h4'  => 'core/post-title',
-			'core/post-title/h5'  => 'core/post-title',
-			'core/post-title/h6'  => 'core/post-title',
-			'core/query-title/h1' => 'core/query-title',
-			'core/query-title/h2' => 'core/query-title',
-			'core/query-title/h3' => 'core/query-title',
-			'core/query-title/h4' => 'core/query-title',
-			'core/query-title/h5' => 'core/query-title',
-			'core/query-title/h6' => 'core/query-title',
-		);
-
-		$paths_to_override = array(
-			array( 'color', 'palette' ),
-			array( 'color', 'gradients' ),
-			array( 'spacing', 'units' ),
-			array( 'typography', 'fontSizes' ),
-			array( 'typography', 'fontFamilies' ),
-			array( 'custom' ),
-		);
-
-		// 'defaults' settings become top-level.
-		if ( isset( $settings[ self::V0_ALL_BLOCKS_NAME ] ) ) {
-			$new = $settings[ self::V0_ALL_BLOCKS_NAME ];
-			unset( $settings[ self::V0_ALL_BLOCKS_NAME ] );
-		}
-
-		// 'root' settings override 'defaults'.
-		if ( isset( $settings[ self::V0_ROOT_BLOCK_NAME ] ) ) {
-			$new = array_replace_recursive( $new, $settings[ self::V0_ROOT_BLOCK_NAME ] );
-
-			// The array_replace_recursive algorithm merges at the leaf level.
-			// This means that when a leaf value is an array,
-			// the incoming array won't replace the existing,
-			// but the numeric indexes are used for replacement.
-			//
-			// These cases we hold into $paths_to_override
-			// and need to replace them with the new data.
-			foreach ( $paths_to_override as $path ) {
-				$root_value = _wp_array_get(
-					$settings,
-					array_merge( array( self::V0_ROOT_BLOCK_NAME ), $path ),
-					null
-				);
-				if ( null !== $root_value ) {
-					gutenberg_experimental_set( $new, $path, $root_value );
-				}
-			}
-
-			unset( $settings[ self::V0_ROOT_BLOCK_NAME ] );
-		}
-
-		if ( empty( $settings ) ) {
-			return $new;
-		}
-
-		/*
-		 * At this point, it only contains block's data.
-		 * However, some block data we need to consolidate
-		 * into a different section, as it's the case for:
-		 *
-		 * - core/heading/h1, core/heading/h2, ...         => core/heading
-		 * - core/post-title/h1, core/post-title/h2, ...   => core/post-title
-		 * - core/query-title/h1, core/query-title/h2, ... => core/query-title
-		 *
-		 */
-		$new['blocks'] = $settings;
-		foreach ( $blocks_to_consolidate as $old_name => $new_name ) {
-			// Unset the $old_name.
-			unset( $new[ $old_name ] );
-
-			// Consolidate the $new value.
-			$block_settings = _wp_array_get( $settings, array( $old_name ), null );
-			if ( null !== $block_settings ) {
-				$new_path     = array( 'blocks', $new_name );
-				$new_settings = array();
-				gutenberg_experimental_set( $new_settings, $new_path, $block_settings );
-
-				$new = array_replace_recursive( $new, $new_settings );
-				foreach ( $paths_to_override as $path ) {
-					$block_value = _wp_array_get( $block_settings, $path, null );
-					if ( null !== $block_value ) {
-						gutenberg_experimental_set( $new, array_merge( $new_path, $path ), $block_value );
-					}
-				}
-			}
-		}
-
-		return $new;
-	}
-
-	/**
-	 * Processes the styles subtree.
-	 *
-	 * @param array $styles Array to process.
-	 *
-	 * @return array The styles in the new format.
-	 */
-	private static function migrate_v0_to_v1_process_styles( $styles ) {
-		$new                   = array();
-		$block_heading         = array(
-			'core/heading/h1' => 'h1',
-			'core/heading/h2' => 'h2',
-			'core/heading/h3' => 'h3',
-			'core/heading/h4' => 'h4',
-			'core/heading/h5' => 'h5',
-			'core/heading/h6' => 'h6',
-		);
-		$blocks_to_consolidate = array(
-			'core/post-title/h1'  => 'core/post-title',
-			'core/post-title/h2'  => 'core/post-title',
-			'core/post-title/h3'  => 'core/post-title',
-			'core/post-title/h4'  => 'core/post-title',
-			'core/post-title/h5'  => 'core/post-title',
-			'core/post-title/h6'  => 'core/post-title',
-			'core/query-title/h1' => 'core/query-title',
-			'core/query-title/h2' => 'core/query-title',
-			'core/query-title/h3' => 'core/query-title',
-			'core/query-title/h4' => 'core/query-title',
-			'core/query-title/h5' => 'core/query-title',
-			'core/query-title/h6' => 'core/query-title',
-		);
-
-		// Styles within root become top-level.
-		if ( isset( $styles[ self::V0_ROOT_BLOCK_NAME ] ) ) {
-			$new = $styles[ self::V0_ROOT_BLOCK_NAME ];
-			unset( $styles[ self::V0_ROOT_BLOCK_NAME ] );
-
-			// Transform root.styles.color.link into elements.link.color.text.
-			if ( isset( $new['color']['link'] ) ) {
-				$new['elements']['link']['color']['text'] = $new['color']['link'];
-				unset( $new['color']['link'] );
-			}
-		}
-
-		if ( empty( $styles ) ) {
-			return $new;
-		}
-
-		/*
-		 * At this point, it only contains block's data.
-		 * However, we still need to consolidate a few things:
-		 *
-		 * - link element => transform from link color property
-		 * - heading elements => consolidate multiple blocks (core/heading/h1, core/heading/h2)
-		 *   into a single one (core/heading).
-		 */
-		$new['blocks'] = $styles;
-
-		// link elements.
-		foreach ( $new['blocks'] as $block_name => $metadata ) {
-			if ( isset( $metadata['color']['link'] ) ) {
-				$new['blocks'][ $block_name ]['elements']['link']['color']['text'] = $metadata['color']['link'];
-				unset( $new['blocks'][ $block_name ]['color']['link'] );
-			}
-		}
-
-		/*
-		 * The heading block needs a special treatment:
-		 *
-		 * - if it has a link color => it needs to be moved to the blocks.core/heading
-		 * - the rest is consolidated into the corresponding element
-		 *
-		 */
-		foreach ( $block_heading as $old_name => $new_name ) {
-			if ( ! isset( $new['blocks'][ $old_name ] ) ) {
-				continue;
-			}
-
-			gutenberg_experimental_set( $new, array( 'elements', $new_name ), $new['blocks'][ $old_name ] );
-
-			if ( isset( $new['blocks'][ $old_name ]['elements'] ) ) {
-				gutenberg_experimental_set( $new, array( 'blocks', 'core/heading', 'elements' ), $new['blocks'][ $old_name ]['elements'] );
-			}
-
-			unset( $new['blocks'][ $old_name ] );
-
-		}
-
-		/*
-		 * Port the styles from the old blocks to the new,
-		 * overriding the previous values.
-		 */
-		foreach ( $blocks_to_consolidate as $old_name => $new_name ) {
-			if ( ! isset( $new['blocks'][ $old_name ] ) ) {
-				continue;
-			}
-
-			gutenberg_experimental_set( $new, array( 'blocks', $new_name ), $new['blocks'][ $old_name ] );
-			unset( $new['blocks'][ $old_name ] );
-
-		}
-
-		return $new;
-	}
-
-	/**
-	 * Removes the custom prefixes for a few properties that only worked in the plugin:
-	 *
-	 * 'border.customColor'               => 'border.color',
-	 * 'border.customStyle'               => 'border.style',
-	 * 'border.customWidth'               => 'border.width',
-	 * 'typography.customFontStyle'       => 'typography.fontStyle',
-	 * 'typography.customFontWeight'      => 'typography.fontWeight',
-	 * 'typography.customLetterSpacing'   => 'typography.letterSpacing',
-	 * 'typography.customTextDecorations' => 'typography.textDecoration',
-	 * 'typography.customTextTransforms'  => 'typography.textTransform',
-	 *
-	 * @param array $old Data to migrate.
-	 *
-	 * @return array Data without the custom prefixes.
-	 */
-	private static function migrate_v1_remove_custom_prefixes( $old ) {
-		// Copy everything.
-		$new = $old;
-
-		// Overwrite the things that change.
-		if ( isset( $old['settings'] ) ) {
-			$new['settings'] = self::rename_paths( $old['settings'], self::V1_RENAMED_PATHS );
-		}
-
-		return $new;
 	}
 
 	/**
@@ -406,6 +73,8 @@ class WP_Theme_JSON_Schema_Gutenberg {
 	 * 'spacing.customMargin'        => 'spacing.margin',
 	 * 'spacing.customPadding'       => 'spacing.padding',
 	 * 'typography.customLineHeight' => 'typography.lineHeight',
+	 *
+	 * @since 5.9.0
 	 *
 	 * @param array $old Data to migrate.
 	 *
@@ -427,7 +96,80 @@ class WP_Theme_JSON_Schema_Gutenberg {
 	}
 
 	/**
+	 * Migrates from v2 to v3.
+	 *
+	 * - Sets settings.typography.defaultFontSizes to false if settings.typography.fontSizes are defined.
+	 * - Sets settings.spacing.defaultSpacingSizes to false if settings.spacing.spacingSizes are defined.
+	 * - Prevents settings.spacing.spacingSizes from merging with settings.spacing.spacingScale by
+	 *   unsetting spacingScale when spacingSizes are defined.
+	 *
+	 * @since 6.6.0
+	 *
+	 * @param array $old     Data to migrate.
+	 * @param string $origin What source of data this object represents.
+	 *                       One of 'blocks', 'default', 'theme', or 'custom'.
+	 * @return array Data with defaultFontSizes set to false.
+	 */
+	private static function migrate_v2_to_v3( $old, $origin ) {
+		// Copy everything.
+		$new = $old;
+
+		// Set the new version.
+		$new['version'] = 3;
+
+		/*
+		 * Remaining changes do not need to be applied to the custom origin,
+		 * as they should take on the value of the theme origin.
+		 */
+		if ( 'custom' === $origin ) {
+			return $new;
+		}
+
+		/*
+		 * Even though defaultFontSizes is a new setting, we need to migrate
+		 * it as it controls the PRESETS_METADATA prevent_override which was
+		 * previously hardcoded to false. This only needs to happen when the
+		 * theme provided font sizes as they could match the default ones and
+		 * affect the generated CSS. And in v2 we provided default font sizes
+		 * when the theme did not provide any.
+		 */
+		if ( isset( $old['settings']['typography']['fontSizes'] ) ) {
+			$new['settings']['typography']['defaultFontSizes'] = false;
+		}
+
+		/*
+		 * Similarly to defaultFontSizes, we need to migrate defaultSpacingSizes
+		 * as it controls the PRESETS_METADATA prevent_override which was
+		 * previously hardcoded to false. This only needs to happen when the
+		 * theme provided spacing sizes via spacingSizes or spacingScale.
+		 */
+		if (
+			isset( $old['settings']['spacing']['spacingSizes'] ) ||
+			isset( $old['settings']['spacing']['spacingScale'] )
+		) {
+			$new['settings']['spacing']['defaultSpacingSizes'] = false;
+		}
+
+		/*
+		 * In v3 spacingSizes is merged with the generated spacingScale sizes
+		 * instead of completely replacing them. The v3 behavior is what was
+		 * documented for the v2 schema, but the code never actually did work
+		 * that way. Instead of surprising users with a behavior change two
+		 * years after the fact at the same time as a v3 update is introduced,
+		 * we'll continue using the "bugged" behavior for v2 themes. And treat
+		 * the "bug fix" as a breaking change for v3.
+		 */
+		if ( isset( $old['settings']['spacing']['spacingSizes'] ) ) {
+			unset( $new['settings']['spacing']['spacingScale'] );
+		}
+
+		return $new;
+	}
+
+	/**
 	 * Processes the settings subtree.
+	 *
+	 * @since 5.9.0
 	 *
 	 * @param array $settings        Array to process.
 	 * @param array $paths_to_rename Paths to rename.
@@ -453,8 +195,10 @@ class WP_Theme_JSON_Schema_Gutenberg {
 	/**
 	 * Processes a settings array, renaming or moving properties.
 	 *
+	 * @since 5.9.0
+	 *
 	 * @param array $settings        Reference to settings either defaults or an individual block's.
-	 * @param arary $paths_to_rename Paths to rename.
+	 * @param array $paths_to_rename Paths to rename.
 	 */
 	private static function rename_settings( &$settings, $paths_to_rename ) {
 		foreach ( $paths_to_rename as $original => $renamed ) {
@@ -463,7 +207,7 @@ class WP_Theme_JSON_Schema_Gutenberg {
 			$current_value = _wp_array_get( $settings, $original_path, null );
 
 			if ( null !== $current_value ) {
-				gutenberg_experimental_set( $settings, $renamed_path, $current_value );
+				_wp_array_set( $settings, $renamed_path, $current_value );
 				self::unset_setting_by_path( $settings, $original_path );
 			}
 		}
@@ -472,10 +216,10 @@ class WP_Theme_JSON_Schema_Gutenberg {
 	/**
 	 * Removes a property from within the provided settings by its path.
 	 *
+	 * @since 5.9.0
+	 *
 	 * @param array $settings Reference to the current settings array.
 	 * @param array $path Path to the property to be removed.
-	 *
-	 * @return void
 	 */
 	private static function unset_setting_by_path( &$settings, $path ) {
 		$tmp_settings = &$settings; // phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable

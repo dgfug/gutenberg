@@ -8,35 +8,84 @@
 	background-color: rgba($black, 0.35);
 	z-index: z-index(".components-modal__screen-overlay");
 	display: flex;
+	// This animates the appearance of the backdrop.
+	@include animation__fade-in();
 
-	// This animates the appearance of the white background.
-	@include edit-post__fade-in-animation();
+	&.is-animating-out {
+		// Note: it's important that the fade-out animation doesn't end after the
+		// modal frame's disappear animation, because the component will be removed
+		// from the DOM when that animation ends.
+		@include animation__fade-out($delay: 80ms);
+	}
 }
 
 // The modal window element.
 .components-modal__frame {
+	@include reset;
 	// Use the entire viewport on smaller screens.
-	margin: 0;
+	margin: $grid-unit-50 0 0 0;
 	width: 100%;
 	background: $white;
-	box-shadow: $shadow-modal;
-	border-radius: $radius-block-ui;
+	box-shadow: $elevation-large;
+	border-radius: $radius-large $radius-large 0 0;
 	overflow: hidden;
 	// Have the content element fill the vertical space yet not overflow.
 	display: flex;
+	// Animate the modal frame/contents appearing on the page.
+	animation-name: components-modal__appear-animation;
+	animation-fill-mode: forwards;
+	animation-timing-function: cubic-bezier(0.29, 0, 0, 1);
+
+	@media not (prefers-reduced-motion) {
+		animation-duration: var(--modal-frame-animation-duration);
+	}
+
+	.components-modal__screen-overlay.is-animating-out & {
+		animation-name: components-modal__disappear-animation;
+		animation-timing-function: cubic-bezier(1, 0, 0.2, 1);
+	}
 
 	// Show a centered modal on bigger screens.
 	@include break-small() {
+		border-radius: $radius-large;
 		margin: auto;
 		width: auto;
 		min-width: $modal-min-width;
-		max-width: calc(100% - #{ $grid-unit-20 * 2 });
-		max-height: calc(100% - #{ $header-height * 2 });
+		max-width: calc(100% - #{$grid-unit-20 * 2});
+		max-height: calc(100% - #{$header-height * 2});
 
-		// Animate the modal frame/contents appearing on the page.
-		animation: components-modal__appear-animation 0.1s ease-out;
-		animation-fill-mode: forwards;
-		@include reduce-motion("animation");
+		&.is-full-screen {
+			@include break-small() {
+				width: calc(100% - #{ $grid-unit-20 * 2 });
+				height: calc(100% - #{ $grid-unit-20 * 2 });
+				max-height: none;
+			}
+			@include break-medium() {
+				width: calc(100% - #{ $grid-unit-50 * 2 });
+				height: calc(100% - #{ $grid-unit-50 * 2 });
+				max-width: none;
+			}
+		}
+
+		&.has-size-small,
+		&.has-size-medium,
+		&.has-size-large {
+			width: 100%;
+		}
+
+		// The following widths were selected to align with existing baselines
+		// found elsewhere in the editor.
+		// See https://github.com/WordPress/gutenberg/pull/54471#issuecomment-1723818809
+		&.has-size-small {
+			max-width: $modal-width-small;
+		}
+		&.has-size-medium {
+			max-width: $modal-width-medium;
+		}
+		&.has-size-large {
+			max-width: $modal-width-large;
+		}
+
 	}
 
 	@include break-large() {
@@ -46,10 +95,25 @@
 
 @keyframes components-modal__appear-animation {
 	from {
-		transform: translateY($grid-unit-40);
+		opacity: 0;
+		transform: scale(0.9);
 	}
 	to {
-		transform: translateY(0);
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+// Note: this animation is also used in the animationend JS event listener.
+// Make sure that the animation name is kept in sync across the two files.
+@keyframes components-modal__disappear-animation {
+	from {
+		opacity: 1;
+		transform: scale(1);
+	}
+	to {
+		opacity: 0;
+		transform: scale(0.9);
 	}
 }
 
@@ -58,13 +122,13 @@
 // modal screen).
 .components-modal__header {
 	box-sizing: border-box;
-	border-bottom: $border-width solid $gray-300;
-	padding: 0 $grid-unit-40;
+	border-bottom: $border-width solid transparent;
+	padding: $grid-unit-30 $grid-unit-40 $grid-unit-10;
 	display: flex;
 	flex-direction: row;
 	justify-content: space-between;
 	align-items: center;
-	height: $header-height;
+	height: $header-height + $grid-unit-15;
 	width: 100%;
 	z-index: z-index(".components-modal__header");
 	position: absolute;
@@ -72,7 +136,7 @@
 	left: 0;
 
 	.components-modal__header-heading {
-		font-size: 1rem;
+		font-size: 1.2rem;
 		font-weight: 600;
 	}
 
@@ -81,9 +145,12 @@
 		margin: 0;
 	}
 
-	.components-button {
-		position: relative;
-		left: $grid-unit-10;
+	.components-modal__content.has-scrolled-content:not(.hide-header) & {
+		border-bottom-color: $gray-300;
+	}
+
+	& + p {
+		margin-top: 0;
 	}
 }
 
@@ -108,17 +175,21 @@
 // Modal contents.
 .components-modal__content {
 	flex: 1;
-	margin-top: $header-height;
-	padding: 0 $grid-unit-40 $grid-unit-30;
+	margin-top: $header-height + $grid-unit-15;
+	// Small top padding required to avoid cutting off the visible outline when the first child element is focusable.
+	padding: $grid-unit-05 $grid-unit-40 $grid-unit-40;
 	overflow: auto;
 
-	// Emulate margin-bottom for the header. Uses a pseudo-element since the
-	// absolutely positioned header’s margins wouldn’t effect siblings and
-	// padding-top on the content element would effect positioning of any
-	// sticky elements within.
-	&::before {
-		content: "";
-		display: block;
-		margin-bottom: $grid-unit-30;
+	&.hide-header {
+		margin-top: 0;
+		padding-top: $grid-unit-40;
+	}
+
+	&.is-scrollable:focus-visible {
+		box-shadow: inset 0 0 0 var(--wp-admin-border-width-focus) $components-color-accent;
+
+		// Windows High Contrast mode will show this outline, but not the box-shadow.
+		outline: 2px solid transparent;
+		outline-offset: -2px;
 	}
 }

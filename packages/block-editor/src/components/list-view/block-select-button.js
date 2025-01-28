@@ -1,89 +1,159 @@
 /**
  * External dependencies
  */
-import classnames from 'classnames';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
  */
-import { Button, VisuallyHidden } from '@wordpress/components';
-import { useInstanceId } from '@wordpress/compose';
+import {
+	__experimentalHStack as HStack,
+	__experimentalTruncate as Truncate,
+	privateApis as componentsPrivateApis,
+} from '@wordpress/components';
 import { forwardRef } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { Icon, lockSmall as lock, pinSmall } from '@wordpress/icons';
+import { SPACE, ENTER } from '@wordpress/keycodes';
+import { useSelect } from '@wordpress/data';
 
 /**
  * Internal dependencies
  */
 import BlockIcon from '../block-icon';
 import useBlockDisplayInformation from '../use-block-display-information';
-import { getBlockPositionDescription } from './utils';
-import BlockTitle from '../block-title';
+import useBlockDisplayTitle from '../block-title/use-block-display-title';
 import ListViewExpander from './expander';
+import { useBlockLock } from '../block-lock';
+import useListViewImages from './use-list-view-images';
+import { store as blockEditorStore } from '../../store';
+import { unlock } from '../../lock-unlock';
+const { Badge } = unlock( componentsPrivateApis );
 
 function ListViewBlockSelectButton(
 	{
 		className,
 		block: { clientId },
-		isSelected,
 		onClick,
+		onContextMenu,
+		onMouseDown,
 		onToggleExpanded,
-		position,
-		siblingBlockCount,
-		level,
 		tabIndex,
 		onFocus,
 		onDragStart,
 		onDragEnd,
 		draggable,
+		isExpanded,
+		ariaDescribedBy,
 	},
 	ref
 ) {
 	const blockInformation = useBlockDisplayInformation( clientId );
-	const instanceId = useInstanceId( ListViewBlockSelectButton );
-	const descriptionId = `list-view-block-select-button__${ instanceId }`;
-	const blockPositionDescription = getBlockPositionDescription(
-		position,
-		siblingBlockCount,
-		level
+	const blockTitle = useBlockDisplayTitle( {
+		clientId,
+		context: 'list-view',
+	} );
+	const { isLocked } = useBlockLock( clientId );
+	const { isContentOnly } = useSelect(
+		( select ) => ( {
+			isContentOnly:
+				select( blockEditorStore ).getBlockEditingMode( clientId ) ===
+				'contentOnly',
+		} ),
+		[ clientId ]
 	);
+	const shouldShowLockIcon = isLocked && ! isContentOnly;
+	const isSticky = blockInformation?.positionType === 'sticky';
+	const images = useListViewImages( { clientId, isExpanded } );
+
+	// The `href` attribute triggers the browser's native HTML drag operations.
+	// When the link is dragged, the element's outerHTML is set in DataTransfer object as text/html.
+	// We need to clear any HTML drag data to prevent `pasteHandler` from firing
+	// inside the `useOnBlockDrop` hook.
+	const onDragStartHandler = ( event ) => {
+		event.dataTransfer.clearData();
+		onDragStart?.( event );
+	};
+
+	/**
+	 * @param {KeyboardEvent} event
+	 */
+	function onKeyDown( event ) {
+		if ( event.keyCode === ENTER || event.keyCode === SPACE ) {
+			onClick( event );
+		}
+	}
 
 	return (
-		<>
-			<Button
-				className={ classnames(
-					'block-editor-list-view-block-select-button',
-					className
-				) }
-				onClick={ onClick }
-				aria-describedby={ descriptionId }
-				ref={ ref }
-				tabIndex={ tabIndex }
-				onFocus={ onFocus }
-				onDragStart={ onDragStart }
-				onDragEnd={ onDragEnd }
-				draggable={ draggable }
+		<a
+			className={ clsx(
+				'block-editor-list-view-block-select-button',
+				className
+			) }
+			onClick={ onClick }
+			onContextMenu={ onContextMenu }
+			onKeyDown={ onKeyDown }
+			onMouseDown={ onMouseDown }
+			ref={ ref }
+			tabIndex={ tabIndex }
+			onFocus={ onFocus }
+			onDragStart={ onDragStartHandler }
+			onDragEnd={ onDragEnd }
+			draggable={ draggable }
+			href={ `#block-${ clientId }` }
+			aria-describedby={ ariaDescribedBy }
+			aria-expanded={ isExpanded }
+		>
+			<ListViewExpander onClick={ onToggleExpanded } />
+			<BlockIcon
+				icon={ blockInformation?.icon }
+				showColors
+				context="list-view"
+			/>
+			<HStack
+				alignment="center"
+				className="block-editor-list-view-block-select-button__label-wrapper"
+				justify="flex-start"
+				spacing={ 1 }
 			>
-				<ListViewExpander onClick={ onToggleExpanded } />
-				<BlockIcon icon={ blockInformation?.icon } showColors />
-				<BlockTitle clientId={ clientId } />
+				<span className="block-editor-list-view-block-select-button__title">
+					<Truncate ellipsizeMode="auto">{ blockTitle }</Truncate>
+				</span>
 				{ blockInformation?.anchor && (
-					<span className="block-editor-list-view-block-select-button__anchor">
-						{ blockInformation.anchor }
+					<span className="block-editor-list-view-block-select-button__anchor-wrapper">
+						<Badge className="block-editor-list-view-block-select-button__anchor">
+							{ blockInformation.anchor }
+						</Badge>
 					</span>
 				) }
-				{ isSelected && (
-					<VisuallyHidden>
-						{ __( '(selected block)' ) }
-					</VisuallyHidden>
+				{ isSticky && (
+					<span className="block-editor-list-view-block-select-button__sticky">
+						<Icon icon={ pinSmall } />
+					</span>
 				) }
-			</Button>
-			<div
-				className="block-editor-list-view-block-select-button__description"
-				id={ descriptionId }
-			>
-				{ blockPositionDescription }
-			</div>
-		</>
+				{ images.length ? (
+					<span
+						className="block-editor-list-view-block-select-button__images"
+						aria-hidden
+					>
+						{ images.map( ( image, index ) => (
+							<span
+								className="block-editor-list-view-block-select-button__image"
+								key={ image.clientId }
+								style={ {
+									backgroundImage: `url(${ image.url })`,
+									zIndex: images.length - index, // Ensure the first image is on top, and subsequent images are behind.
+								} }
+							/>
+						) ) }
+					</span>
+				) : null }
+				{ shouldShowLockIcon && (
+					<span className="block-editor-list-view-block-select-button__lock">
+						<Icon icon={ lock } />
+					</span>
+				) }
+			</HStack>
+		</a>
 	);
 }
 

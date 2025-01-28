@@ -12,7 +12,9 @@ import { addWidgetIdToBlock } from '@wordpress/widgets';
  */
 export function transformWidgetToBlock( widget ) {
 	if ( widget.id_base === 'block' ) {
-		const parsedBlocks = parse( widget.instance.raw.content );
+		const parsedBlocks = parse( widget.instance.raw.content, {
+			__unstableSkipAutop: true,
+		} );
 		if ( ! parsedBlocks.length ) {
 			return addWidgetIdToBlock(
 				createBlock( 'core/paragraph', {}, [] ),
@@ -44,7 +46,7 @@ export function transformWidgetToBlock( widget ) {
  * Converts a block to a widget entity record.
  *
  * @param {Object}  block         The block.
- * @param {Object?} relatedWidget A related widget entity record from the API (optional).
+ * @param {?Object} relatedWidget A related widget entity record from the API (optional).
  * @return {Object} the widget object (converted from block).
  */
 export function transformBlockToWidget( block, relatedWidget = {} ) {

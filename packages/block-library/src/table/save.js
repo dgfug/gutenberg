@@ -1,7 +1,7 @@
 /**
  * External dependencies
  */
-import classnames from 'classnames';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
@@ -11,6 +11,7 @@ import {
 	useBlockProps,
 	__experimentalGetBorderClassesAndStyles as getBorderClassesAndStyles,
 	__experimentalGetColorClassesAndStyles as getColorClassesAndStyles,
+	__experimentalGetElementClassName,
 } from '@wordpress/block-editor';
 
 export default function save( { attributes } ) {
@@ -24,7 +25,7 @@ export default function save( { attributes } ) {
 	const colorProps = getColorClassesAndStyles( attributes );
 	const borderProps = getBorderClassesAndStyles( attributes );
 
-	const classes = classnames( colorProps.className, borderProps.className, {
+	const classes = clsx( colorProps.className, borderProps.className, {
 		'has-fixed-layout': hasFixedLayout,
 	} );
 
@@ -42,8 +43,18 @@ export default function save( { attributes } ) {
 				{ rows.map( ( { cells }, rowIndex ) => (
 					<tr key={ rowIndex }>
 						{ cells.map(
-							( { content, tag, scope, align }, cellIndex ) => {
-								const cellClasses = classnames( {
+							(
+								{
+									content,
+									tag,
+									scope,
+									align,
+									colspan,
+									rowspan,
+								},
+								cellIndex
+							) => {
+								const cellClasses = clsx( {
 									[ `has-text-align-${ align }` ]: align,
 								} );
 
@@ -61,6 +72,8 @@ export default function save( { attributes } ) {
 										scope={
 											tag === 'th' ? scope : undefined
 										}
+										colSpan={ colspan }
+										rowSpan={ rowspan }
 									/>
 								);
 							}
@@ -82,7 +95,11 @@ export default function save( { attributes } ) {
 				<Section type="foot" rows={ foot } />
 			</table>
 			{ hasCaption && (
-				<RichText.Content tagName="figcaption" value={ caption } />
+				<RichText.Content
+					tagName="figcaption"
+					value={ caption }
+					className={ __experimentalGetElementClassName( 'caption' ) }
+				/>
 			) }
 		</figure>
 	);

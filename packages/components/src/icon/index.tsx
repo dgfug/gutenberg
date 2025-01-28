@@ -1,7 +1,6 @@
 /**
  * External dependencies
  */
-// eslint-disable-next-line no-restricted-imports
 import type { ComponentType, HTMLProps, SVGProps } from 'react';
 
 /**
@@ -10,7 +9,6 @@ import type { ComponentType, HTMLProps, SVGProps } from 'react';
 import {
 	cloneElement,
 	createElement,
-	Component,
 	isValidElement,
 } from '@wordpress/element';
 import { SVG } from '@wordpress/primitives';
@@ -21,23 +19,11 @@ import { SVG } from '@wordpress/primitives';
 import Dashicon from '../dashicon';
 import type { IconKey as DashiconIconKey } from '../dashicon/types';
 
-type IconType< P > = DashiconIconKey | ComponentType< P > | JSX.Element;
-
-interface BaseProps< P > {
-	/**
-	 * The icon to render. Supported values are: Dashicons (specified as
-	 * strings), functions, Component instances and `null`.
-	 *
-	 * @default null
-	 */
-	icon?: IconType< P > | null;
-	/**
-	 * The size (width and height) of the icon.
-	 *
-	 * @default 24
-	 */
-	size?: number;
-}
+export type IconType =
+	| DashiconIconKey
+	| ComponentType< { size?: number } >
+	| ( ( props: { size?: number } ) => JSX.Element )
+	| JSX.Element;
 
 type AdditionalProps< T > = T extends ComponentType< infer U >
 	? U
@@ -45,17 +31,49 @@ type AdditionalProps< T > = T extends ComponentType< infer U >
 	? SVGProps< SVGSVGElement >
 	: {};
 
-export type Props< P > = BaseProps< P > & AdditionalProps< IconType< P > >;
+export type Props = {
+	/**
+	 * The icon to render. In most cases, you should use an icon from
+	 * [the `@wordpress/icons` package](https://wordpress.github.io/gutenberg/?path=/story/icons-icon--library).
+	 *
+	 * Other supported values are: component instances, functions,
+	 * [Dashicons](https://developer.wordpress.org/resource/dashicons/)
+	 * (specified as strings), and `null`.
+	 *
+	 * The `size` value, as well as any other additional props, will be passed through.
+	 *
+	 * @default null
+	 */
+	icon?: IconType | null;
+	/**
+	 * The size (width and height) of the icon.
+	 *
+	 * Defaults to `20` when `icon` is a string (i.e. a Dashicon id), otherwise `24`.
+	 *
+	 * @default `'string' === typeof icon ? 20 : 24`.
+	 */
+	size?: number;
+} & AdditionalProps< IconType >;
 
-function Icon< P >( {
+/**
+ * Renders a raw icon without any initial styling or wrappers.
+ *
+ * ```jsx
+ * import { wordpress } from '@wordpress/icons';
+ *
+ * <Icon icon={ wordpress } />
+ * ```
+ */
+function Icon( {
 	icon = null,
-	size = 24,
+	size = 'string' === typeof icon ? 20 : 24,
 	...additionalProps
-}: Props< P > ) {
+}: Props ) {
 	if ( 'string' === typeof icon ) {
 		return (
 			<Dashicon
 				icon={ icon }
+				size={ size }
 				{ ...( additionalProps as HTMLProps< HTMLSpanElement > ) }
 			/>
 		);
@@ -68,14 +86,7 @@ function Icon< P >( {
 	}
 
 	if ( 'function' === typeof icon ) {
-		if ( icon.prototype instanceof Component ) {
-			return createElement( icon, ( {
-				size,
-				...additionalProps,
-			} as unknown ) as P );
-		}
-
-		return ( icon as ( ...args: any[] ) => JSX.Element )( {
+		return createElement( icon, {
 			size,
 			...additionalProps,
 		} );
@@ -83,9 +94,9 @@ function Icon< P >( {
 
 	if ( icon && ( icon.type === 'svg' || icon.type === SVG ) ) {
 		const appliedProps = {
+			...icon.props,
 			width: size,
 			height: size,
-			...icon.props,
 			...additionalProps,
 		};
 

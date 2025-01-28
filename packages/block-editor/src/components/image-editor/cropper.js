@@ -2,12 +2,13 @@
  * External dependencies
  */
 import Cropper from 'react-easy-crop';
-import classnames from 'classnames';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
  */
 import { Spinner } from '@wordpress/components';
+import { useResizeObserver } from '@wordpress/compose';
 
 /**
  * Internal dependencies
@@ -20,9 +21,9 @@ export default function ImageCropper( {
 	url,
 	width,
 	height,
-	clientWidth,
 	naturalHeight,
 	naturalWidth,
+	borderProps,
 } ) {
 	const {
 		isInProgress,
@@ -35,6 +36,8 @@ export default function ImageCropper( {
 		setZoom,
 		rotation,
 	} = useImageEditingContext();
+	const [ contentResizeListener, { width: clientWidth } ] =
+		useResizeObserver();
 
 	let editedHeight = height || ( clientWidth * naturalHeight ) / naturalWidth;
 
@@ -42,12 +45,17 @@ export default function ImageCropper( {
 		editedHeight = ( clientWidth * naturalWidth ) / naturalHeight;
 	}
 
-	return (
+	const area = (
 		<div
-			className={ classnames( 'wp-block-image__crop-area', {
-				'is-applying': isInProgress,
-			} ) }
+			className={ clsx(
+				'wp-block-image__crop-area',
+				borderProps?.className,
+				{
+					'is-applying': isInProgress,
+				}
+			) }
 			style={ {
+				...borderProps?.style,
 				width: width || clientWidth,
 				height: editedHeight,
 			} }
@@ -60,7 +68,9 @@ export default function ImageCropper( {
 				crop={ position }
 				zoom={ zoom / 100 }
 				aspect={ aspect }
-				onCropChange={ setPosition }
+				onCropChange={ ( pos ) => {
+					setPosition( pos );
+				} }
 				onCropComplete={ ( newCropPercent ) => {
 					setCrop( newCropPercent );
 				} }
@@ -70,5 +80,12 @@ export default function ImageCropper( {
 			/>
 			{ isInProgress && <Spinner /> }
 		</div>
+	);
+
+	return (
+		<>
+			{ contentResizeListener }
+			{ area }
+		</>
 	);
 }

@@ -1,19 +1,19 @@
 /**
  * External dependencies
  */
-import { css, SerializedStyles } from '@emotion/react';
+import type { SerializedStyles } from '@emotion/react';
+import { css } from '@emotion/react';
 import styled from '@emotion/styled';
-// eslint-disable-next-line no-restricted-imports
 import type { CSSProperties, ReactNode } from 'react';
 
 /**
  * Internal dependencies
  */
-import type { WordPressComponentProps } from '../../ui/context';
+import type { WordPressComponentProps } from '../../context';
 import { Flex, FlexItem } from '../../flex';
 import { Text } from '../../text';
-import { COLORS, rtl } from '../../utils';
-import type { LabelPosition } from '../types';
+import { baseLabelTypography, COLORS, CONFIG, rtl } from '../../utils';
+import type { LabelPosition, Size, PrefixSuffixWrapperProps } from '../types';
 
 type ContainerProps = {
 	disabled?: boolean;
@@ -22,44 +22,74 @@ type ContainerProps = {
 	labelPosition?: LabelPosition;
 };
 
-type RootProps = {
-	isFocused?: boolean;
-	labelPosition?: LabelPosition;
+export const Prefix = styled.span`
+	box-sizing: border-box;
+	display: block;
+`;
+
+export const Suffix = styled.span`
+	align-items: center;
+	align-self: stretch;
+	box-sizing: border-box;
+	display: flex;
+`;
+
+type BackdropProps = {
+	disabled?: boolean;
+	isBorderless?: boolean;
 };
 
-const rootFocusedStyles = ( { isFocused }: RootProps ) => {
-	if ( ! isFocused ) return '';
-
-	return css( { zIndex: 1 } );
-};
-
-const rootLabelPositionStyles = ( { labelPosition }: RootProps ) => {
-	switch ( labelPosition ) {
-		case 'top':
-			return css`
-				align-items: flex-start;
-				flex-direction: column;
-			`;
-		case 'bottom':
-			return css`
-				align-items: flex-start;
-				flex-direction: column-reverse;
-			`;
-		case 'edge':
-			return css`
-				justify-content: space-between;
-			`;
-		default:
-			return '';
+const backdropBorderColor = ( {
+	disabled,
+	isBorderless,
+}: BackdropProps ): CSSProperties[ 'borderColor' ] => {
+	if ( isBorderless ) {
+		return 'transparent';
 	}
+
+	if ( disabled ) {
+		return COLORS.ui.borderDisabled;
+	}
+
+	return COLORS.ui.border;
 };
 
-export const Root = styled( Flex )< RootProps >`
+export const BackdropUI = styled.div< BackdropProps >`
+	&&& {
+		box-sizing: border-box;
+		border-color: ${ backdropBorderColor };
+		border-radius: inherit;
+		border-style: solid;
+		border-width: 1px;
+		bottom: 0;
+		left: 0;
+		margin: 0;
+		padding: 0;
+		pointer-events: none;
+		position: absolute;
+		right: 0;
+		top: 0;
+
+		${ rtl( { paddingLeft: 2 } ) }
+	}
+`;
+
+export const Root = styled( Flex )`
+	box-sizing: border-box;
 	position: relative;
-	border-radius: 2px;
+	border-radius: ${ CONFIG.radiusSmall };
 	padding-top: 0;
-	${ rootFocusedStyles }
-	${ rootLabelPositionStyles }
+
+	// Focus within, excluding cases where auxiliary controls in prefix or suffix have focus.
+	&:focus-within:not( :has( :is( ${ Prefix }, ${ Suffix } ):focus-within ) ) {
+		${ BackdropUI } {
+			border-color: ${ COLORS.ui.borderFocus };
+			box-shadow: ${ CONFIG.controlBoxShadowFocus };
+			// Windows High Contrast mode will show this outline, but not the box-shadow.
+			outline: 2px solid transparent;
+			outline-offset: -2px;
+		}
+	}
 `;
 
 const containerDisabledStyles = ( { disabled }: ContainerProps ) => {
@@ -70,18 +100,17 @@ const containerDisabledStyles = ( { disabled }: ContainerProps ) => {
 	return css( { backgroundColor } );
 };
 
-// Normalizes the margins from the <Flex /> (components/ui/flex/) container.
-const containerMarginStyles = ( { hideLabel }: ContainerProps ) => {
-	return hideLabel ? css( { margin: '0 !important' } ) : null;
-};
-
 const containerWidthStyles = ( {
 	__unstableInputWidth,
 	labelPosition,
 }: ContainerProps ) => {
-	if ( ! __unstableInputWidth ) return css( { width: '100%' } );
+	if ( ! __unstableInputWidth ) {
+		return css( { width: '100%' } );
+	}
 
-	if ( labelPosition === 'side' ) return '';
+	if ( labelPosition === 'side' ) {
+		return '';
+	}
 
 	if ( labelPosition === 'edge' ) {
 		return css( {
@@ -101,37 +130,43 @@ export const Container = styled.div< ContainerProps >`
 	position: relative;
 
 	${ containerDisabledStyles }
-	${ containerMarginStyles }
 	${ containerWidthStyles }
 `;
 
-type Size = 'default' | 'small';
-
 type InputProps = {
+	__next40pxDefaultSize?: boolean;
 	disabled?: boolean;
 	inputSize?: Size;
 	isDragging?: boolean;
 	dragCursor?: CSSProperties[ 'cursor' ];
+	paddingInlineStart?: CSSProperties[ 'paddingInlineStart' ];
+	paddingInlineEnd?: CSSProperties[ 'paddingInlineEnd' ];
 };
 
 const disabledStyles = ( { disabled }: InputProps ) => {
-	if ( ! disabled ) return '';
+	if ( ! disabled ) {
+		return '';
+	}
 
 	return css( {
 		color: COLORS.ui.textDisabled,
 	} );
 };
 
-const fontSizeStyles = ( { inputSize: size }: InputProps ) => {
+export const fontSizeStyles = ( { inputSize: size }: InputProps ) => {
 	const sizes = {
 		default: '13px',
 		small: '11px',
+		compact: '13px',
+		'__unstable-large': '13px',
 	};
 
 	const fontSize = sizes[ size as Size ] || sizes.default;
 	const fontSizeMobile = '16px';
 
-	if ( ! fontSize ) return '';
+	if ( ! fontSize ) {
+		return '';
+	}
 
 	return css`
 		font-size: ${ fontSizeMobile };
@@ -142,23 +177,58 @@ const fontSizeStyles = ( { inputSize: size }: InputProps ) => {
 	`;
 };
 
-const sizeStyles = ( { inputSize: size }: InputProps ) => {
+export const getSizeConfig = ( {
+	inputSize: size,
+	__next40pxDefaultSize,
+}: InputProps ) => {
+	// Paddings may be overridden by the custom paddings props.
 	const sizes = {
 		default: {
-			height: 30,
+			height: 40,
 			lineHeight: 1,
-			minHeight: 30,
+			minHeight: 40,
+			paddingLeft: CONFIG.controlPaddingX,
+			paddingRight: CONFIG.controlPaddingX,
 		},
 		small: {
 			height: 24,
 			lineHeight: 1,
 			minHeight: 24,
+			paddingLeft: CONFIG.controlPaddingXSmall,
+			paddingRight: CONFIG.controlPaddingXSmall,
+		},
+		compact: {
+			height: 32,
+			lineHeight: 1,
+			minHeight: 32,
+			paddingLeft: CONFIG.controlPaddingXSmall,
+			paddingRight: CONFIG.controlPaddingXSmall,
+		},
+		'__unstable-large': {
+			height: 40,
+			lineHeight: 1,
+			minHeight: 40,
+			paddingLeft: CONFIG.controlPaddingX,
+			paddingRight: CONFIG.controlPaddingX,
 		},
 	};
 
-	const style = sizes[ size as Size ] || sizes.default;
+	if ( ! __next40pxDefaultSize ) {
+		sizes.default = sizes.compact;
+	}
 
-	return css( style );
+	return sizes[ size as Size ] || sizes.default;
+};
+
+const sizeStyles = ( props: InputProps ) => {
+	return css( getSizeConfig( props ) );
+};
+
+const customPaddings = ( {
+	paddingInlineStart,
+	paddingInlineEnd,
+}: InputProps ) => {
+	return css( { paddingInlineStart, paddingInlineEnd } );
 };
 
 const dragStyles = ( { isDragging, dragCursor }: InputProps ) => {
@@ -201,49 +271,42 @@ export const Input = styled.input< InputProps >`
 		box-sizing: border-box;
 		border: none;
 		box-shadow: none !important;
-		color: ${ COLORS.black };
+		color: ${ COLORS.theme.foreground };
 		display: block;
+		font-family: inherit;
 		margin: 0;
 		outline: none;
-		padding-left: 8px;
-		padding-right: 8px;
 		width: 100%;
 
 		${ dragStyles }
 		${ disabledStyles }
 		${ fontSizeStyles }
 		${ sizeStyles }
+		${ customPaddings }
 
 		&::-webkit-input-placeholder {
 			line-height: normal;
 		}
+
+		&[type='email'],
+		&[type='url'] {
+			/* rtl:ignore */
+			direction: ltr;
+		}
 	}
 `;
 
-const labelPadding = ( {
-	labelPosition,
-}: {
-	labelPosition?: LabelPosition;
-} ) => {
-	let paddingBottom = 4;
-
-	if ( labelPosition === 'edge' || labelPosition === 'side' ) {
-		paddingBottom = 0;
-	}
-
-	return css( { paddingTop: 0, paddingBottom } );
-};
-
 const BaseLabel = styled( Text )< { labelPosition?: LabelPosition } >`
 	&&& {
+		${ baseLabelTypography };
+
 		box-sizing: border-box;
-		color: currentColor;
 		display: block;
-		margin: 0;
+		padding-top: 0;
+		padding-bottom: 0;
 		max-width: 100%;
 		z-index: 1;
 
-		${ labelPadding }
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -262,59 +325,34 @@ export const LabelWrapper = styled( FlexItem )`
 	max-width: calc( 100% - 10px );
 `;
 
-type BackdropProps = {
-	disabled?: boolean;
-	isFocused?: boolean;
-};
+const prefixSuffixWrapperStyles = ( {
+	variant = 'default',
+	size,
+	__next40pxDefaultSize,
+	isPrefix,
+}: PrefixSuffixWrapperProps & { isPrefix?: boolean } ) => {
+	const { paddingLeft: padding } = getSizeConfig( {
+		inputSize: size,
+		__next40pxDefaultSize,
+	} );
 
-const backdropFocusedStyles = ( {
-	disabled,
-	isFocused,
-}: BackdropProps ): SerializedStyles => {
-	let borderColor = isFocused ? COLORS.ui.borderFocus : COLORS.ui.border;
+	const paddingProperty = isPrefix
+		? 'paddingInlineStart'
+		: 'paddingInlineEnd';
 
-	let boxShadow;
-
-	if ( isFocused ) {
-		boxShadow = `0 0 0 1px ${ COLORS.ui.borderFocus } inset`;
+	if ( variant === 'default' ) {
+		return css( {
+			[ paddingProperty ]: padding,
+		} );
 	}
 
-	if ( disabled ) {
-		borderColor = COLORS.ui.borderDisabled;
-	}
-
+	// If variant is 'icon' or 'control'
 	return css( {
-		boxShadow,
-		borderColor,
-		borderStyle: 'solid',
-		borderWidth: 1,
+		display: 'flex',
+		[ paddingProperty ]: padding - 4,
 	} );
 };
 
-export const BackdropUI = styled.div< BackdropProps >`
-	&&& {
-		box-sizing: border-box;
-		border-radius: inherit;
-		bottom: 0;
-		left: 0;
-		margin: 0;
-		padding: 0;
-		pointer-events: none;
-		position: absolute;
-		right: 0;
-		top: 0;
-
-		${ backdropFocusedStyles }
-		${ rtl( { paddingLeft: 2 } ) }
-	}
-`;
-
-export const Prefix = styled.span`
-	box-sizing: border-box;
-	display: block;
-`;
-
-export const Suffix = styled.span`
-	box-sizing: border-box;
-	display: block;
+export const PrefixSuffixWrapper = styled.div`
+	${ prefixSuffixWrapperStyles }
 `;

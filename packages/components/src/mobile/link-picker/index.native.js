@@ -2,15 +2,14 @@
  * External dependencies
  */
 import { SafeAreaView, TouchableOpacity, View } from 'react-native';
-import { lowerCase, startsWith } from 'lodash';
+import Clipboard from '@react-native-clipboard/clipboard';
 
 /**
  * WordPress dependencies
  */
-import { useState } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
-import { BottomSheet, Icon } from '@wordpress/components';
-import { getProtocol, prependHTTP } from '@wordpress/url';
+import { useEffect, useState } from '@wordpress/element';
+import { __, sprintf } from '@wordpress/i18n';
+import { getProtocol, isURL, prependHTTP } from '@wordpress/url';
 import { link, cancelCircleFilled } from '@wordpress/icons';
 import { usePreferredColorSchemeStyle } from '@wordpress/compose';
 
@@ -20,12 +19,14 @@ import { usePreferredColorSchemeStyle } from '@wordpress/compose';
 import LinkPickerResults from './link-picker-results';
 import NavBar from '../bottom-sheet/nav-bar';
 import styles from './styles.scss';
+import BottomSheet from '../bottom-sheet';
+import Icon from '../../icon';
 
-// this creates a search suggestion for adding a url directly
+// This creates a search suggestion for adding a url directly.
 export const createDirectEntry = ( value ) => {
 	let type = 'URL';
 
-	const protocol = lowerCase( getProtocol( value ) ) || '';
+	const protocol = getProtocol( value )?.toLowerCase() || '';
 
 	if ( protocol.includes( 'mailto' ) ) {
 		type = 'mailto';
@@ -35,7 +36,7 @@ export const createDirectEntry = ( value ) => {
 		type = 'tel';
 	}
 
-	if ( startsWith( value, '#' ) ) {
+	if ( value?.startsWith( '#' ) ) {
 		type = 'internal';
 	}
 
@@ -47,16 +48,22 @@ export const createDirectEntry = ( value ) => {
 	};
 };
 
+const getURLFromClipboard = async () => {
+	const text = await Clipboard.getString();
+	return !! text && isURL( text ) ? text : '';
+};
+
 export const LinkPicker = ( {
 	value: initialValue,
 	onLinkPicked,
 	onCancel: cancel,
 } ) => {
 	const [ value, setValue ] = useState( initialValue );
+	const [ clipboardUrl, setClipboardUrl ] = useState( '' );
 	const directEntry = createDirectEntry( value );
 
-	// the title of a direct entry is displayed as the raw input value, but if we
-	// are replacing empty text, we want to use the generated url
+	// The title of a direct entry is displayed as the raw input value, but if we
+	// are replacing empty text, we want to use the generated url.
 	const pickLink = ( { title, url, isDirectEntry } ) => {
 		onLinkPicked( { title: isDirectEntry ? url : title, url } );
 	};
@@ -67,6 +74,7 @@ export const LinkPicker = ( {
 
 	const clear = () => {
 		setValue( '' );
+		setClipboardUrl( '' );
 	};
 
 	const omniCellStyle = usePreferredColorSchemeStyle(
@@ -79,6 +87,14 @@ export const LinkPicker = ( {
 		styles.iconDark
 	);
 
+	useEffect( () => {
+		getURLFromClipboard()
+			.then( setClipboardUrl )
+			.catch( () => setClipboardUrl( '' ) );
+	}, [] );
+
+	// TODO: Localize the accessibility label.
+	// TODO: Decide on if `LinkSuggestionItemCell` with `isDirectEntry` makes sense.
 	return (
 		<SafeAreaView style={ styles.safeArea }>
 			<NavBar>
@@ -115,6 +131,22 @@ export const LinkPicker = ( {
 						</TouchableOpacity>
 					) }
 				</BottomSheet.Cell>
+				{ !! clipboardUrl && clipboardUrl !== value && (
+					<BottomSheet.LinkSuggestionItemCell
+						accessible
+						accessibilityLabel={ sprintf(
+							/* translators: Copy URL from the clipboard, https://sample.url */
+							__( 'Copy URL from the clipboard, %s' ),
+							clipboardUrl
+						) }
+						suggestion={ {
+							type: 'clipboard',
+							url: clipboardUrl,
+							isDirectEntry: true,
+						} }
+						onLinkPicked={ pickLink }
+					/>
+				) }
 				{ !! value && (
 					<LinkPickerResults
 						query={ value }

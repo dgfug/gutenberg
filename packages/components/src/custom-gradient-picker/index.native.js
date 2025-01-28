@@ -1,11 +1,6 @@
 /**
- * External dependencies
- */
-import { get, omit } from 'lodash';
-/**
  * WordPress dependencies
  */
-import { PanelBody, RadioControl, RangeControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { useState } from '@wordpress/element';
 
@@ -20,6 +15,9 @@ import {
 	HORIZONTAL_GRADIENT_ORIENTATION,
 } from './constants';
 import styles from './style.scss';
+import PanelBody from '../panel/body';
+import RadioControl from '../radio-control';
+import RangeControl from '../range-control';
 
 function CustomGradientPicker( { setColor, currentValue, isGradientColor } ) {
 	const [ gradientOrientation, setGradientOrientation ] = useState(
@@ -29,7 +27,7 @@ function CustomGradientPicker( { setColor, currentValue, isGradientColor } ) {
 	const [ currentColor, setCurrentColor ] = useState( currentValue );
 
 	const { getGradientType, gradients, gradientOptions } = colorsUtils;
-	const gradientAST = getGradientAstWithDefault( currentColor );
+	const { gradientAST } = getGradientAstWithDefault( currentColor );
 	const gradientType = getGradientType( currentColor );
 
 	function isLinearGradient( type ) {
@@ -37,7 +35,7 @@ function CustomGradientPicker( { setColor, currentValue, isGradientColor } ) {
 	}
 
 	function getGradientColor( type ) {
-		const orientation = get( gradientAST, [ 'orientation' ] );
+		const { orientation, ...restGradientAST } = gradientAST;
 
 		if ( orientation ) {
 			setGradientOrientation( orientation );
@@ -55,7 +53,7 @@ function CustomGradientPicker( { setColor, currentValue, isGradientColor } ) {
 						type,
 				  }
 				: {
-						...omit( gradientAST, [ 'orientation' ] ),
+						...restGradientAST,
 						type,
 				  }
 		);
@@ -83,11 +81,7 @@ function CustomGradientPicker( { setColor, currentValue, isGradientColor } ) {
 	}
 
 	function getGradientAngle() {
-		return get(
-			gradientAST,
-			[ 'orientation', 'value' ],
-			DEFAULT_LINEAR_GRADIENT_ANGLE
-		);
+		return gradientAST?.orientation?.value ?? DEFAULT_LINEAR_GRADIENT_ANGLE;
 	}
 	return (
 		<>

@@ -8,7 +8,7 @@
 $ npm install @wordpress/stylelint-config --save-dev
 ```
 
-**Note**: This package requires Node.js 12.0.0 or later. It is not compatible with older versions.
+**Note**: This package requires Node.js version with long-term support status (check [Active LTS or Maintenance LTS releases](https://nodejs.org/en/about/previous-releases)). It is not compatible with older versions.
 
 ## Usage
 
@@ -30,13 +30,35 @@ If you've globally installed `@wordpress/stylelint-config` using the `-g` flag, 
 
 ## Presets
 
-In addition to the default preset, there is also a SCSS preset. This preset extends both `@wordpress/stylelint-config` and [`stylelint-config-recommended-scss`](https://github.com/kristerkari/stylelint-config-recommended-scss).
+In addition to the default preset, there is also a SCSS preset and 2 stylistic variant presets.
 
 ### SCSS
+
+This preset extends both `@wordpress/stylelint-config` and [`stylelint-config-recommended-scss`](https://github.com/kristerkari/stylelint-config-recommended-scss).
 
 ```json
 {
 	"extends": [ "@wordpress/stylelint-config/scss" ]
+}
+```
+
+### Stylistic
+
+This preset extends `@wordpress/stylelint-config` and adds stylistic rules such as `indentation`.
+
+```json
+{
+	"extends": [ "@wordpress/stylelint-config/stylistic" ]
+}
+```
+
+### SCSS Stylistic
+
+This preset extends`@wordpress/stylelint-config`, `@wordpress/stylelint-config/stylistic` and `@wordpress/stylelint-config/scss`, and adapts some stylistic rules for SCSS.
+
+```json
+{
+	"extends": [ "@wordpress/stylelint-config/scss-stylistic" ]
 }
 ```
 
@@ -48,12 +70,18 @@ For example, to change the `indentation` to four spaces and turn off the `number
 
 ```json
 {
-	"extends": "@wordpress/stylelint-config",
+	"extends": "@wordpress/stylelint-config/stylistic",
 	"rules": {
-		"indentation": 4,
-		"number-leading-zero": null
+		"@stylistic/indentation": 4,
+		"@stylistic/number-leading-zero": null
 	}
 }
 ```
 
-<br/><br/><p align="center"><img src="https://s.w.org/style/images/codeispoetry.png?1" alt="Code is Poetry." /></p>
+## Contributing to this package
+
+This is an individual package that's part of the Gutenberg project. The project is organized as a monorepo. It's made up of multiple self-contained software packages, each with a specific purpose. The packages in this monorepo are published to [npm](https://www.npmjs.com/) and used by [WordPress](https://make.wordpress.org/core/) as well as other software projects.
+
+To find out more about contributing to this package or Gutenberg as a whole, please read the project's main [contributor guide](https://github.com/WordPress/gutenberg/tree/HEAD/CONTRIBUTING.md).
+
+<br /><br /><p align="center"><img src="https://s.w.org/style/images/codeispoetry.png?1" alt="Code is Poetry." /></p>

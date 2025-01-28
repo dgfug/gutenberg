@@ -1,146 +1,54 @@
 /**
  * WordPress dependencies
  */
-import {
-	LineHeightControl,
-	__experimentalFontFamilyControl as FontFamilyControl,
-	__experimentalFontAppearanceControl as FontAppearanceControl,
-	__experimentalLetterSpacingControl as LetterSpacingControl,
-} from '@wordpress/block-editor';
-import { PanelBody, FontSizePicker } from '@wordpress/components';
+import { privateApis as blockEditorPrivateApis } from '@wordpress/block-editor';
 
 /**
  * Internal dependencies
  */
-import { getSupportedGlobalStylesPanels, useSetting, useStyle } from './hooks';
+import { unlock } from '../../lock-unlock';
 
-export function useHasTypographyPanel( name ) {
-	const hasLineHeight = useHasLineHeightControl( name );
-	const hasFontAppearance = useHasAppearanceControl( name );
-	const hasLetterSpacing = useHasLetterSpacingControl( name );
-	const supports = getSupportedGlobalStylesPanels( name );
-	return (
-		hasLineHeight ||
-		hasFontAppearance ||
-		hasLetterSpacing ||
-		supports.includes( 'fontSize' )
-	);
-}
+const {
+	useGlobalStyle,
+	useGlobalSetting,
+	useSettingsForBlockElement,
+	TypographyPanel: StylesTypographyPanel,
+} = unlock( blockEditorPrivateApis );
 
-function useHasLineHeightControl( name ) {
-	const supports = getSupportedGlobalStylesPanels( name );
-	return (
-		useSetting( 'typography.lineHeight', name )[ 0 ] &&
-		supports.includes( 'lineHeight' )
-	);
-}
+export default function TypographyPanel( { element, headingLevel } ) {
+	let prefixParts = [];
+	if ( element === 'heading' ) {
+		prefixParts = prefixParts.concat( [ 'elements', headingLevel ] );
+	} else if ( element && element !== 'text' ) {
+		prefixParts = prefixParts.concat( [ 'elements', element ] );
+	}
+	const prefix = prefixParts.join( '.' );
 
-function useHasAppearanceControl( name ) {
-	const supports = getSupportedGlobalStylesPanels( name );
-	const hasFontStyles =
-		useSetting( 'typography.fontStyle', name )[ 0 ] &&
-		supports.includes( 'fontStyle' );
-	const hasFontWeights =
-		useSetting( 'typography.fontWeight', name )[ 0 ] &&
-		supports.includes( 'fontWeight' );
-	return hasFontStyles || hasFontWeights;
-}
-
-function useHasLetterSpacingControl( name ) {
-	const supports = getSupportedGlobalStylesPanels( name );
-	return (
-		useSetting( 'typography.letterSpacing', name )[ 0 ] &&
-		supports.includes( 'letterSpacing' )
+	const [ style ] = useGlobalStyle( prefix, undefined, 'user', {
+		shouldDecodeEncode: false,
+	} );
+	const [ inheritedStyle, setStyle ] = useGlobalStyle(
+		prefix,
+		undefined,
+		'all',
+		{
+			shouldDecodeEncode: false,
+		}
 	);
-}
-
-export default function TypographyPanel( { name } ) {
-	const supports = getSupportedGlobalStylesPanels( name );
-	const [ fontSizes ] = useSetting( 'typography.fontSizes', name );
-	const disableCustomFontSizes = ! useSetting(
-		'typography.customFontSize',
-		name
-	)[ 0 ];
-	const [ fontFamilies ] = useSetting( 'typography.fontFamilies', name );
-	const hasFontStyles =
-		useSetting( 'typography.fontStyle', name )[ 0 ] &&
-		supports.includes( 'fontStyle' );
-	const hasFontWeights =
-		useSetting( 'typography.fontWeight', name )[ 0 ] &&
-		supports.includes( 'fontWeight' );
-	const hasLineHeightEnabled = useHasLineHeightControl( name );
-	const hasAppearanceControl = useHasAppearanceControl( name );
-	const hasLetterSpacingControl = useHasLetterSpacingControl( name );
-
-	const [ fontFamily, setFontFamily ] = useStyle(
-		'typography.fontFamily',
-		name
-	);
-	const [ fontSize, setFontSize ] = useStyle( 'typography.fontSize', name );
-
-	const [ fontStyle, setFontStyle ] = useStyle(
-		'typography.fontStyle',
-		name
-	);
-	const [ fontWeight, setFontWeight ] = useStyle(
-		'typography.fontWeight',
-		name
-	);
-	const [ lineHeight, setLineHeight ] = useStyle(
-		'typography.lineHeight',
-		name
-	);
-	const [ letterSpacing, setLetterSpacing ] = useStyle(
-		'typography.letterSpacing',
-		name
+	const [ rawSettings ] = useGlobalSetting( '' );
+	const usedElement = element === 'heading' ? headingLevel : element;
+	const settings = useSettingsForBlockElement(
+		rawSettings,
+		undefined,
+		usedElement
 	);
 
 	return (
-		<PanelBody className="edit-site-typography-panel" initialOpen={ true }>
-			{ supports.includes( 'fontFamily' ) && (
-				<FontFamilyControl
-					fontFamilies={ fontFamilies }
-					value={ fontFamily }
-					onChange={ setFontFamily }
-				/>
-			) }
-			{ supports.includes( 'fontSize' ) && (
-				<FontSizePicker
-					value={ fontSize }
-					onChange={ setFontSize }
-					fontSizes={ fontSizes }
-					disableCustomFontSizes={ disableCustomFontSizes }
-				/>
-			) }
-			{ hasLineHeightEnabled && (
-				<LineHeightControl
-					value={ lineHeight }
-					onChange={ setLineHeight }
-				/>
-			) }
-			{ hasAppearanceControl && (
-				<FontAppearanceControl
-					value={ {
-						fontStyle,
-						fontWeight,
-					} }
-					onChange={ ( {
-						fontStyle: newFontStyle,
-						fontWeight: newFontWeight,
-					} ) => {
-						setFontStyle( newFontStyle );
-						setFontWeight( newFontWeight );
-					} }
-					hasFontStyles={ hasFontStyles }
-					hasFontWeights={ hasFontWeights }
-				/>
-			) }
-			{ hasLetterSpacingControl && (
-				<LetterSpacingControl
-					value={ letterSpacing }
-					onChange={ setLetterSpacing }
-				/>
-			) }
-		</PanelBody>
+		<StylesTypographyPanel
+			inheritedValue={ inheritedStyle }
+			value={ style }
+			onChange={ setStyle }
+			settings={ settings }
+		/>
 	);
 }

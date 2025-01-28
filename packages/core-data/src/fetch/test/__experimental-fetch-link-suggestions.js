@@ -1,7 +1,11 @@
 /**
  * Internal dependencies
  */
-import fetchLinkSuggestions from '../__experimental-fetch-link-suggestions';
+import {
+	default as fetchLinkSuggestions,
+	sortResults,
+	tokenize,
+} from '../__experimental-fetch-link-suggestions';
 
 jest.mock( '@wordpress/api-fetch', () =>
 	jest.fn( ( { path } ) => {
@@ -68,6 +72,18 @@ jest.mock( '@wordpress/api-fetch', () =>
 						url: 'http://wordpress.local/page-case/',
 						type: 'post',
 						subtype: 'page',
+					},
+				] );
+			case '/wp/v2/media?search=&per_page=20':
+				return Promise.resolve( [
+					{
+						id: 54,
+						title: {
+							rendered: 'Some Test Media Title',
+						},
+						type: 'attachment',
+						source_url:
+							'http://localhost:8888/wp-content/uploads/2022/03/test-pdf.pdf',
 					},
 				] );
 			default:
@@ -154,7 +170,24 @@ describe( 'fetchLinkSuggestions', () => {
 			{ disablePostFormats: true }
 		).then( ( suggestions ) => expect( suggestions ).toEqual( [] ) );
 	} );
-	it( 'returns suggestions from post, term, and post-format', () => {
+
+	it( 'filters suggestions by attachment', () => {
+		return fetchLinkSuggestions( '', {
+			type: 'attachment',
+		} ).then( ( suggestions ) =>
+			expect( suggestions ).toEqual( [
+				{
+					id: 54,
+					title: 'Some Test Media Title',
+					url: 'http://localhost:8888/wp-content/uploads/2022/03/test-pdf.pdf',
+					type: 'attachment',
+					kind: 'media',
+				},
+			] )
+		);
+	} );
+
+	it( 'returns suggestions from post, term, post-format and media', () => {
 		return fetchLinkSuggestions( '', {} ).then( ( suggestions ) =>
 			expect( suggestions ).toEqual( [
 				{
@@ -192,25 +225,83 @@ describe( 'fetchLinkSuggestions', () => {
 					type: 'post-format',
 					kind: 'taxonomy',
 				},
-			] )
-		);
-	} );
-	it( 'initial search suggestions limits results', () => {
-		return fetchLinkSuggestions( '', {
-			type: 'post',
-			subtype: 'page',
-			isInitialSuggestions: true,
-		} ).then( ( suggestions ) =>
-			expect( suggestions ).toEqual( [
 				{
-					id: 11,
-					title: 'Limit Case',
-					url: 'http://wordpress.local/limit-case/',
-					type: 'page',
-					kind: 'post-type',
+					id: 54,
+					title: 'Some Test Media Title',
+					url: 'http://localhost:8888/wp-content/uploads/2022/03/test-pdf.pdf',
+					type: 'attachment',
+					kind: 'media',
 				},
 			] )
 		);
+	} );
+	describe( 'Initial search suggestions', () => {
+		it( 'initial search suggestions limits results', () => {
+			return fetchLinkSuggestions( '', {
+				type: 'post',
+				subtype: 'page',
+				isInitialSuggestions: true,
+			} ).then( ( suggestions ) =>
+				expect( suggestions ).toEqual( [
+					{
+						id: 11,
+						title: 'Limit Case',
+						url: 'http://wordpress.local/limit-case/',
+						type: 'page',
+						kind: 'post-type',
+					},
+				] )
+			);
+		} );
+
+		it( 'should allow custom search options for initial suggestions', () => {
+			return fetchLinkSuggestions( '', {
+				type: 'term',
+				subtype: 'category',
+				page: 11,
+				isInitialSuggestions: true,
+				initialSuggestionsSearchOptions: {
+					type: 'post',
+					subtype: 'page',
+					perPage: 20,
+					page: 11,
+				},
+			} ).then( ( suggestions ) =>
+				expect( suggestions ).toEqual( [
+					{
+						id: 22,
+						title: 'Page Case',
+						url: 'http://wordpress.local/page-case/',
+						type: 'page',
+						kind: 'post-type',
+					},
+				] )
+			);
+		} );
+
+		it( 'should default any missing initial search options to those from the main search options', () => {
+			return fetchLinkSuggestions( '', {
+				type: 'post',
+				subtype: 'page',
+				page: 11,
+				perPage: 20,
+				isInitialSuggestions: true,
+				initialSuggestionsSearchOptions: {
+					// intentionally missing.
+					// expected to default to those from the main search options.
+				},
+			} ).then( ( suggestions ) =>
+				expect( suggestions ).toEqual( [
+					{
+						id: 22,
+						title: 'Page Case',
+						url: 'http://wordpress.local/page-case/',
+						type: 'page',
+						kind: 'post-type',
+					},
+				] )
+			);
+		} );
 	} );
 	it( 'allows searching from a page', () => {
 		return fetchLinkSuggestions( '', {
@@ -228,5 +319,132 @@ describe( 'fetchLinkSuggestions', () => {
 				},
 			] )
 		);
+	} );
+} );
+
+describe( 'sortResults', () => {
+	it( 'returns empty array for empty results', () => {
+		expect( sortResults( [], '' ) ).toEqual( [] );
+	} );
+
+	it( 'orders results', () => {
+		const results = [
+			{
+				id: 1,
+				title: 'How to get from Stockholm to Helsinki by boat',
+				url: 'http://wordpress.local/stockholm-helsinki-boat/',
+				type: 'page',
+				kind: 'post-type',
+			},
+			{
+				id: 2,
+				title: 'A day trip from Stockholm to Swedish countryside towns',
+				url: 'http://wordpress.local/day-trip-stockholm/',
+				type: 'page',
+				kind: 'post-type',
+			},
+			{
+				id: 3,
+				title: 'The art of packing lightly: How to travel with just a cabin bag',
+				url: 'http://wordpress.local/packing-lightly/',
+				type: 'page',
+				kind: 'post-type',
+			},
+			{
+				id: 4,
+				title: 'Tips for travel with a young baby',
+				url: 'http://wordpress.local/young-baby-tips/',
+				type: 'page',
+				kind: 'post-type',
+			},
+			{
+				id: 5,
+				title: '', // Test that empty titles don't cause an error.
+				url: 'http://wordpress.local/420/',
+				type: 'page',
+				kind: 'post-type',
+			},
+			{
+				id: 6,
+				title: 'City Guides',
+				url: 'http://wordpress.local/city-guides/',
+				type: 'category',
+				kind: 'taxonomy',
+			},
+			{
+				id: 7,
+				title: 'Travel Tips',
+				url: 'http://wordpress.local/travel-tips/',
+				type: 'category',
+				kind: 'taxonomy',
+			},
+		];
+		const order = sortResults( results, 'travel tips' ).map(
+			( result ) => result.id
+		);
+		expect( order ).toEqual( [
+			7, // exact match
+			4, // contains: travel, tips
+			3, // contains: travel
+			// same order as input:
+			1,
+			2,
+			5,
+			6,
+		] );
+	} );
+
+	it( 'orders results to prefer direct matches over sub matches', () => {
+		const results = [
+			{
+				id: 1,
+				title: 'News',
+				url: 'http://wordpress.local/news/',
+				type: 'page',
+				kind: 'post-type',
+			},
+			{
+				id: 2,
+				title: 'Newspaper',
+				url: 'http://wordpress.local/newspaper/',
+				type: 'page',
+				kind: 'post-type',
+			},
+			{
+				id: 3,
+				title: 'News Flash News',
+				url: 'http://wordpress.local/news-flash-news/',
+				type: 'page',
+				kind: 'post-type',
+			},
+			{
+				id: 4,
+				title: 'News',
+				url: 'http://wordpress.local/news-2/',
+				type: 'page',
+				kind: 'post-type',
+			},
+		];
+		const order = sortResults( results, 'News' ).map(
+			( result ) => result.id
+		);
+		expect( order ).toEqual( [ 1, 4, 3, 2 ] );
+	} );
+} );
+
+describe( 'tokenize', () => {
+	it( 'returns empty array for empty string', () => {
+		expect( tokenize( '' ) ).toEqual( [] );
+	} );
+
+	it( 'tokenizes a string', () => {
+		expect( tokenize( 'Hello, world!' ) ).toEqual( [ 'hello', 'world' ] );
+	} );
+
+	it( 'tokenizes non latin languages', () => {
+		expect( tokenize( 'こんにちは、世界！' ) ).toEqual( [
+			'こんにちは',
+			'世界',
+		] );
 	} );
 } );

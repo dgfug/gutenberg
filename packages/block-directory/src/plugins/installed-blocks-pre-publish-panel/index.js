@@ -2,9 +2,9 @@
  * WordPress dependencies
  */
 import { _n, sprintf } from '@wordpress/i18n';
-import { PluginPrePublishPanel } from '@wordpress/edit-post';
 import { useSelect } from '@wordpress/data';
 import { blockDefault } from '@wordpress/icons';
+import { PluginPrePublishPanel } from '@wordpress/editor';
 
 /**
  * Internal dependencies
@@ -34,7 +34,7 @@ export default function InstalledBlocksPrePublishPanel() {
 				),
 				newBlockTypes.length
 			) }
-			initialOpen={ true }
+			initialOpen
 		>
 			<p className="installed-blocks-pre-publish-panel__copy">
 				{ _n(

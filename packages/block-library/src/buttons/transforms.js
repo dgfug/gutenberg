@@ -7,7 +7,7 @@ import { __unstableCreateElement as createElement } from '@wordpress/rich-text';
 /**
  * Internal dependencies
  */
-import { name } from './block.json';
+import { getTransformedMetadata } from '../utils/get-transformed-metadata';
 
 const transforms = {
 	from: [
@@ -16,13 +16,13 @@ const transforms = {
 			isMultiBlock: true,
 			blocks: [ 'core/button' ],
 			transform: ( buttons ) =>
-				// Creates the buttons block
+				// Creates the buttons block.
 				createBlock(
-					name,
+					'core/buttons',
 					{},
-					// Loop the selected buttons
+					// Loop the selected buttons.
 					buttons.map( ( attributes ) =>
-						// Create singular button in the buttons block
+						// Create singular button in the buttons block.
 						createBlock( 'core/button', attributes )
 					)
 				),
@@ -32,25 +32,30 @@ const transforms = {
 			isMultiBlock: true,
 			blocks: [ 'core/paragraph' ],
 			transform: ( buttons ) =>
-				// Creates the buttons block
+				// Creates the buttons block.
 				createBlock(
-					name,
+					'core/buttons',
 					{},
-					// Loop the selected buttons
+					// Loop the selected buttons.
 					buttons.map( ( attributes ) => {
-						const element = createElement(
-							document,
-							attributes.content
-						);
-						// Remove any HTML tags
+						const { content, metadata } = attributes;
+						const element = createElement( document, content );
+						// Remove any HTML tags.
 						const text = element.innerText || '';
-						// Get first url
+						// Get first url.
 						const link = element.querySelector( 'a' );
 						const url = link?.getAttribute( 'href' );
-						// Create singular button in the buttons block
+						// Create singular button in the buttons block.
 						return createBlock( 'core/button', {
 							text,
 							url,
+							metadata: getTransformedMetadata(
+								metadata,
+								'core/button',
+								( { content: contentBinding } ) => ( {
+									text: contentBinding,
+								} )
+							),
 						} );
 					} )
 				),

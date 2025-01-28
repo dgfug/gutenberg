@@ -23,7 +23,7 @@ import {
 } from '@wordpress/block-editor';
 
 registerBlockType( 'my-plugin/inspector-controls-example', {
-	apiVersion: 2,
+	apiVersion: 3,
 
 	title: 'Inspector controls example',
 
@@ -96,6 +96,7 @@ registerBlockType( 'my-plugin/inspector-controls-example', {
 				<InspectorControls>
 					<PanelBody title={ __( 'Settings' ) }>
 						<CheckboxControl
+							__nextHasNoMarginBottom
 							heading="Checkbox Field"
 							label="Tick Me"
 							help="Additional help text"
@@ -114,6 +115,8 @@ registerBlockType( 'my-plugin/inspector-controls-example', {
 						/>
 
 						<TextControl
+							__nextHasNoMarginBottom
+							__next40pxDefaultSize
 							label="Text Field"
 							help="Additional help text"
 							value={ textField }
@@ -121,12 +124,14 @@ registerBlockType( 'my-plugin/inspector-controls-example', {
 						/>
 
 						<ToggleControl
+							__nextHasNoMarginBottom
 							label="Toggle Field"
 							checked={ toggleField }
 							onChange={ onChangeToggleField }
 						/>
 
 						<SelectControl
+							__nextHasNoMarginBottom
 							label="Select Control"
 							value={ selectField }
 							options={ [
@@ -188,9 +193,7 @@ Inspector Advanced Controls appear under the _Advanced_ panel of a block's [Insp
 ### Usage
 
 ```js
-import {
-	TextControl,
-} from '@wordpress/components';
+import { TextControl } from '@wordpress/components';
 import {
 	InspectorControls,
 	InspectorAdvancedControls,
@@ -199,14 +202,14 @@ import {
 function MyBlockEdit( { attributes, setAttributes } ) {
 	return (
 		<>
-			<div>
-				{ /* Block markup goes here */ }
-			</div
+			<div>{ /* Block markup goes here */ }</div>
 			<InspectorControls>
-				{ /* Regular control goes here */
+				{ /* Regular control goes here */ }
 			</InspectorControls>
 			<InspectorAdvancedControls>
 				<TextControl
+					__nextHasNoMarginBottom
+					__next40pxDefaultSize
 					label="HTML anchor"
 					value={ attributes.anchor }
 					onChange={ ( nextValue ) => {

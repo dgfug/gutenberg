@@ -1,16 +1,15 @@
 /**
  * External dependencies
  */
-import classnames from 'classnames';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
  */
 import { __ } from '@wordpress/i18n';
-import { compose } from '@wordpress/compose';
-import { getDefaultBlockName } from '@wordpress/blocks';
 import { decodeEntities } from '@wordpress/html-entities';
-import { withSelect, withDispatch } from '@wordpress/data';
+import { useSelect, useDispatch } from '@wordpress/data';
+import { ENTER, SPACE } from '@wordpress/keycodes';
 
 /**
  * Internal dependencies
@@ -24,44 +23,71 @@ import { store as blockEditorStore } from '../../store';
  */
 export const ZWNBSP = '\ufeff';
 
-export function DefaultBlockAppender( {
-	isLocked,
-	isVisible,
-	onAppend,
-	showPrompt,
-	placeholder,
-	rootClientId,
-} ) {
-	if ( isLocked || ! isVisible ) {
+export default function DefaultBlockAppender( { rootClientId } ) {
+	const { showPrompt, isLocked, placeholder, isManualGrid } = useSelect(
+		( select ) => {
+			const {
+				getBlockCount,
+				getSettings,
+				getTemplateLock,
+				getBlockAttributes,
+			} = select( blockEditorStore );
+
+			const isEmpty = ! getBlockCount( rootClientId );
+			const { bodyPlaceholder } = getSettings();
+
+			return {
+				showPrompt: isEmpty,
+				isLocked: !! getTemplateLock( rootClientId ),
+				placeholder: bodyPlaceholder,
+				isManualGrid:
+					getBlockAttributes( rootClientId )?.layout
+						?.isManualPlacement,
+			};
+		},
+		[ rootClientId ]
+	);
+
+	const { insertDefaultBlock, startTyping } = useDispatch( blockEditorStore );
+
+	if ( isLocked || isManualGrid ) {
 		return null;
 	}
 
 	const value =
 		decodeEntities( placeholder ) || __( 'Type / to choose a block' );
 
+	const onAppend = () => {
+		insertDefaultBlock( undefined, rootClientId );
+		startTyping();
+	};
+
 	return (
 		<div
 			data-root-client-id={ rootClientId || '' }
-			className={ classnames( 'block-editor-default-block-appender', {
+			className={ clsx( 'block-editor-default-block-appender', {
 				'has-visible-prompt': showPrompt,
 			} ) }
 		>
 			<p
 				tabIndex="0"
-				// Only necessary for `useCanvasClickRedirect` to consider it
-				// as a target. Ideally it should consider any tabbable target,
-				// but the inserter is rendered in place while it should be
-				// rendered in a popover, just like it does for an empty
-				// paragraph block.
-				contentEditable
-				suppressContentEditableWarning
 				// We want this element to be styled as a paragraph by themes.
 				// eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role
 				role="button"
-				aria-label={ __( 'Add block' ) }
+				aria-label={ __( 'Add default block' ) }
 				// A wrapping container for this one already has the wp-block className.
 				className="block-editor-default-block-appender__content"
-				onFocus={ onAppend }
+				onKeyDown={ ( event ) => {
+					if ( ENTER === event.keyCode || SPACE === event.keyCode ) {
+						onAppend();
+					}
+				} }
+				onClick={ () => onAppend() }
+				onFocus={ () => {
+					if ( showPrompt ) {
+						onAppend();
+					}
+				} }
 			>
 				{ showPrompt ? value : ZWNBSP }
 			</p>
@@ -74,43 +100,3 @@ export function DefaultBlockAppender( {
 		</div>
 	);
 }
-
-export default compose(
-	withSelect( ( select, ownProps ) => {
-		const {
-			getBlockCount,
-			getBlockName,
-			isBlockValid,
-			getSettings,
-			getTemplateLock,
-		} = select( blockEditorStore );
-
-		const isEmpty = ! getBlockCount( ownProps.rootClientId );
-		const isLastBlockDefault =
-			getBlockName( ownProps.lastBlockClientId ) ===
-			getDefaultBlockName();
-		const isLastBlockValid = isBlockValid( ownProps.lastBlockClientId );
-		const { bodyPlaceholder } = getSettings();
-
-		return {
-			isVisible: isEmpty || ! isLastBlockDefault || ! isLastBlockValid,
-			showPrompt: isEmpty,
-			isLocked: !! getTemplateLock( ownProps.rootClientId ),
-			placeholder: bodyPlaceholder,
-		};
-	} ),
-	withDispatch( ( dispatch, ownProps ) => {
-		const { insertDefaultBlock, startTyping } = dispatch(
-			blockEditorStore
-		);
-
-		return {
-			onAppend() {
-				const { rootClientId } = ownProps;
-
-				insertDefaultBlock( undefined, rootClientId );
-				startTyping();
-			},
-		};
-	} )
-)( DefaultBlockAppender );

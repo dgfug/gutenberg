@@ -5,19 +5,23 @@ import { Button } from '@wordpress/components';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { __ } from '@wordpress/i18n';
 import { chevronRightSmall, Icon } from '@wordpress/icons';
+import { useRef } from '@wordpress/element';
 
 /**
  * Internal dependencies
  */
 import BlockTitle from '../block-title';
 import { store as blockEditorStore } from '../../store';
+import { unlock } from '../../lock-unlock';
+import { useBlockElementRef } from '../block-list/use-block-props/use-block-refs';
+import getEditorRegion from '../../utils/get-editor-region';
 
 /**
  * Block breadcrumb component, displaying the hierarchy of the current block selection as a breadcrumb.
  *
  * @param {Object} props               Component props.
  * @param {string} props.rootLabelText Translated label for the root element of the breadcrumb trail.
- * @return {WPElement}                 Block Breadcrumb.
+ * @return {Element}                   Block Breadcrumb.
  */
 function BlockBreadcrumb( { rootLabelText } ) {
 	const { selectBlock, clearSelectedBlock } = useDispatch( blockEditorStore );
@@ -25,16 +29,21 @@ function BlockBreadcrumb( { rootLabelText } ) {
 		const {
 			getSelectionStart,
 			getSelectedBlockClientId,
-			getBlockParents,
-		} = select( blockEditorStore );
+			getEnabledBlockParents,
+		} = unlock( select( blockEditorStore ) );
 		const selectedBlockClientId = getSelectedBlockClientId();
 		return {
-			parents: getBlockParents( selectedBlockClientId ),
+			parents: getEnabledBlockParents( selectedBlockClientId ),
 			clientId: selectedBlockClientId,
 			hasSelection: !! getSelectionStart().clientId,
 		};
 	}, [] );
 	const rootLabel = rootLabelText || __( 'Document' );
+
+	// We don't care about this specific ref, but this is a way
+	// to get a ref within the editor canvas so we can focus it later.
+	const blockRef = useRef();
+	useBlockElementRef( clientId, blockRef );
 
 	/*
 	 * Disable reason: The `list` ARIA role is redundant but
@@ -57,9 +66,18 @@ function BlockBreadcrumb( { rootLabelText } ) {
 			>
 				{ hasSelection && (
 					<Button
+						size="small"
 						className="block-editor-block-breadcrumb__button"
-						variant="tertiary"
-						onClick={ clearSelectedBlock }
+						onClick={ () => {
+							// Find the block editor wrapper for the selected block
+							const blockEditor = blockRef.current?.closest(
+								'.editor-styles-wrapper'
+							);
+
+							clearSelectedBlock();
+
+							getEditorRegion( blockEditor )?.focus();
+						} }
 					>
 						{ rootLabel }
 					</Button>
@@ -76,11 +94,14 @@ function BlockBreadcrumb( { rootLabelText } ) {
 			{ parents.map( ( parentClientId ) => (
 				<li key={ parentClientId }>
 					<Button
+						size="small"
 						className="block-editor-block-breadcrumb__button"
-						variant="tertiary"
 						onClick={ () => selectBlock( parentClientId ) }
 					>
-						<BlockTitle clientId={ parentClientId } />
+						<BlockTitle
+							clientId={ parentClientId }
+							maximumLength={ 35 }
+						/>
 					</Button>
 					<Icon
 						icon={ chevronRightSmall }
@@ -93,7 +114,7 @@ function BlockBreadcrumb( { rootLabelText } ) {
 					className="block-editor-block-breadcrumb__current"
 					aria-current="true"
 				>
-					<BlockTitle clientId={ clientId } />
+					<BlockTitle clientId={ clientId } maximumLength={ 35 } />
 				</li>
 			) }
 		</ul>

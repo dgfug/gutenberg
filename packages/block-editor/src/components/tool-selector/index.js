@@ -31,23 +31,20 @@ const selectIcon = (
 );
 
 function ToolSelector( props, ref ) {
-	const isNavigationTool = useSelect(
-		( select ) => select( blockEditorStore ).isNavigationMode(),
+	const mode = useSelect(
+		( select ) => select( blockEditorStore ).__unstableGetEditorMode(),
 		[]
 	);
-	const { setNavigationMode } = useDispatch( blockEditorStore );
-
-	const onSwitchMode = ( mode ) => {
-		setNavigationMode( mode === 'edit' ? false : true );
-	};
+	const { __unstableSetEditorMode } = useDispatch( blockEditorStore );
 
 	return (
 		<Dropdown
 			renderToggle={ ( { isOpen, onToggle } ) => (
 				<Button
+					size="compact"
 					{ ...props }
 					ref={ ref }
-					icon={ isNavigationTool ? selectIcon : editIcon }
+					icon={ mode === 'navigation' ? editIcon : selectIcon }
 					aria-expanded={ isOpen }
 					aria-haspopup="true"
 					onClick={ onToggle }
@@ -55,38 +52,50 @@ function ToolSelector( props, ref ) {
 					label={ __( 'Tools' ) }
 				/>
 			) }
-			position="bottom right"
+			popoverProps={ { placement: 'bottom-start' } }
 			renderContent={ () => (
 				<>
-					<NavigableMenu role="menu" aria-label={ __( 'Tools' ) }>
+					<NavigableMenu
+						className="block-editor-tool-selector__menu"
+						role="menu"
+						aria-label={ __( 'Tools' ) }
+					>
 						<MenuItemsChoice
-							value={ isNavigationTool ? 'select' : 'edit' }
-							onSelect={ onSwitchMode }
+							value={
+								mode === 'navigation' ? 'navigation' : 'edit'
+							}
+							onSelect={ ( newMode ) => {
+								__unstableSetEditorMode( newMode );
+							} }
 							choices={ [
+								{
+									value: 'navigation',
+									label: (
+										<>
+											<Icon icon={ editIcon } />
+											{ __( 'Write' ) }
+										</>
+									),
+									info: __( 'Focus on content.' ),
+									'aria-label': __( 'Write' ),
+								},
 								{
 									value: 'edit',
 									label: (
 										<>
-											<Icon icon={ editIcon } />
-											{ __( 'Edit' ) }
-										</>
-									),
-								},
-								{
-									value: 'select',
-									label: (
-										<>
 											{ selectIcon }
-											{ __( 'Select' ) }
+											{ __( 'Design' ) }
 										</>
 									),
+									info: __( 'Edit layout and styles.' ),
+									'aria-label': __( 'Design' ),
 								},
 							] }
 						/>
 					</NavigableMenu>
 					<div className="block-editor-tool-selector__help">
 						{ __(
-							'Tools provide different interactions for selecting, navigating, and editing blocks. Toggle between select and edit by pressing Escape and Enter.'
+							'Tools provide different sets of interactions for blocks. Toggle between simplified content tools (Write) and advanced visual editing tools (Design).'
 						) }
 					</div>
 				</>

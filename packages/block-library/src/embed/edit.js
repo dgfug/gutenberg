@@ -4,9 +4,10 @@
 import {
 	createUpgradedEmbedBlock,
 	getClassNames,
+	removeAspectRatioClasses,
 	fallback,
-	getAttributesFromPreview,
 	getEmbedInfoByProvider,
+	getMergedAttributesWithPreview,
 } from './util';
 import EmbedControls from './embed-controls';
 import { embedContentIcon } from './icons';
@@ -17,7 +18,7 @@ import EmbedPreview from './embed-preview';
 /**
  * External dependencies
  */
-import classnames from 'classnames';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
@@ -28,6 +29,8 @@ import { useDispatch, useSelect } from '@wordpress/data';
 import { useBlockProps } from '@wordpress/block-editor';
 import { store as coreStore } from '@wordpress/core-data';
 import { View } from '@wordpress/primitives';
+import { getAuthority } from '@wordpress/url';
+import { Caption } from '../utils/caption';
 
 const EmbedEdit = ( props ) => {
 	const {
@@ -61,6 +64,7 @@ const EmbedEdit = ( props ) => {
 		fetching,
 		themeSupportsResponsive,
 		cannotEmbed,
+		hasResolved,
 	} = useSelect(
 		( select ) => {
 			const {
@@ -68,6 +72,7 @@ const EmbedEdit = ( props ) => {
 				isPreviewEmbedFallback,
 				isRequestingEmbedPreview,
 				getThemeSupports,
+				hasFinishedResolution,
 			} = select( coreStore );
 			if ( ! attributesUrl ) {
 				return { fetching: false, cannotEmbed: false };
@@ -89,31 +94,29 @@ const EmbedEdit = ( props ) => {
 			return {
 				preview: validPreview ? embedPreview : undefined,
 				fetching: isRequestingEmbedPreview( attributesUrl ),
-				themeSupportsResponsive: getThemeSupports()[
-					'responsive-embeds'
-				],
+				themeSupportsResponsive:
+					getThemeSupports()[ 'responsive-embeds' ],
 				cannotEmbed: ! validPreview || previewIsFallback,
+				hasResolved: hasFinishedResolution( 'getEmbedPreview', [
+					attributesUrl,
+				] ),
 			};
 		},
 		[ attributesUrl ]
 	);
 
 	/**
-	 * @return {Object} Attributes derived from the preview, merged with the current attributes.
+	 * Returns the attributes derived from the preview, merged with the current attributes.
+	 *
+	 * @return {Object} Merged attributes.
 	 */
-	const getMergedAttributes = () => {
-		const { allowResponsive, className } = attributes;
-		return {
-			...attributes,
-			...getAttributesFromPreview(
-				preview,
-				title,
-				className,
-				responsive,
-				allowResponsive
-			),
-		};
-	};
+	const getMergedAttributes = () =>
+		getMergedAttributesWithPreview(
+			attributes,
+			preview,
+			title,
+			responsive
+		);
 
 	const toggleResponsive = () => {
 		const { allowResponsive, className } = attributes;
@@ -131,33 +134,50 @@ const EmbedEdit = ( props ) => {
 	};
 
 	useEffect( () => {
-		if ( ! preview?.html || ! cannotEmbed || fetching ) {
+		if ( preview?.html || ! cannotEmbed || ! hasResolved ) {
 			return;
 		}
+
 		// At this stage, we're not fetching the preview and know it can't be embedded,
 		// so try removing any trailing slash, and resubmit.
 		const newURL = attributesUrl.replace( /\/$/, '' );
 		setURL( newURL );
 		setIsEditingURL( false );
 		setAttributes( { url: newURL } );
-	}, [ preview?.html, attributesUrl ] );
+	}, [
+		preview?.html,
+		attributesUrl,
+		cannotEmbed,
+		hasResolved,
+		setAttributes,
+	] );
 
-	// Handle incoming preview
+	// Try a different provider in case the embed url is not supported.
+	useEffect( () => {
+		if ( ! cannotEmbed || fetching || ! url ) {
+			return;
+		}
+
+		// Until X provider is supported in WordPress, as a workaround we use Twitter provider.
+		if ( getAuthority( url ) === 'x.com' ) {
+			const newURL = new URL( url );
+			newURL.host = 'twitter.com';
+			setAttributes( { url: newURL.toString() } );
+		}
+	}, [ url, cannotEmbed, fetching, setAttributes ] );
+
+	// Handle incoming preview.
 	useEffect( () => {
 		if ( preview && ! isEditingURL ) {
-			// Even though we set attributes that get derived from the preview,
-			// we don't access them directly because for the initial render,
-			// the `setAttributes` call will not have taken effect. If we're
-			// rendering responsive content, setting the responsive classes
-			// after the preview has been rendered can result in unwanted
-			// clipping or scrollbars. The `getAttributesFromPreview` function
-			// that `getMergedAttributes` uses is memoized so that we're not
-			// calculating them on every render.
-			setAttributes( getMergedAttributes() );
+			// When obtaining an incoming preview,
+			// we set the attributes derived from the preview data.
+			const mergedAttributes = getMergedAttributes();
+			setAttributes( mergedAttributes );
+
 			if ( onReplace ) {
 				const upgradedBlock = createUpgradedEmbedBlock(
 					props,
-					getMergedAttributes()
+					mergedAttributes
 				);
 
 				if ( upgradedBlock ) {
@@ -195,12 +215,18 @@ const EmbedEdit = ( props ) => {
 							event.preventDefault();
 						}
 
+						// If the embed URL was changed, we need to reset the aspect ratio class.
+						// To do this we have to remove the existing ratio class so it can be recalculated.
+						const blockClass = removeAspectRatioClasses(
+							attributes.className
+						);
+
 						setIsEditingURL( false );
-						setAttributes( { url } );
+						setAttributes( { url, className: blockClass } );
 					} }
 					value={ url }
 					cannotEmbed={ cannotEmbed }
-					onChange={ ( event ) => setURL( event.target.value ) }
+					onChange={ ( value ) => setURL( value ) }
 					fallback={ () => fallback( url, onReplace ) }
 					tryAgain={ () => {
 						invalidateResolution( 'getEmbedPreview', [ url ] );
@@ -224,7 +250,7 @@ const EmbedEdit = ( props ) => {
 		allowResponsive,
 		className: classFromPreview,
 	} = getMergedAttributes();
-	const className = classnames( classFromPreview, props.className );
+	const className = clsx( classFromPreview, props.className );
 
 	return (
 		<>
@@ -236,7 +262,15 @@ const EmbedEdit = ( props ) => {
 				toggleResponsive={ toggleResponsive }
 				switchBackToURLInput={ () => setIsEditingURL( true ) }
 			/>
-			<View { ...blockProps }>
+			<figure
+				{ ...blockProps }
+				className={ clsx( blockProps.className, className, {
+					[ `is-type-${ type }` ]: type,
+					[ `is-provider-${ providerNameSlug }` ]: providerNameSlug,
+					[ `wp-block-embed-${ providerNameSlug }` ]:
+						providerNameSlug,
+				} ) }
+			>
 				<EmbedPreview
 					preview={ preview }
 					previewable={ previewable }
@@ -251,8 +285,18 @@ const EmbedEdit = ( props ) => {
 					icon={ icon }
 					label={ label }
 					insertBlocksAfter={ insertBlocksAfter }
+					attributes={ attributes }
+					setAttributes={ setAttributes }
 				/>
-			</View>
+				<Caption
+					attributes={ attributes }
+					setAttributes={ setAttributes }
+					isSelected={ isSelected }
+					insertBlocksAfter={ insertBlocksAfter }
+					label={ __( 'Embed caption text' ) }
+					showToolbarButton={ isSelected }
+				/>
+			</figure>
 		</>
 	);
 };

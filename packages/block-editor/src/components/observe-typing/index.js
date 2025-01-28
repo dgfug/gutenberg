@@ -111,13 +111,16 @@ export function useMouseMoveTypingReset() {
  * Sets and removes the `isTyping` flag based on user actions:
  *
  * - Sets the flag if the user types within the given element.
- * - Removes the flag when the user selects some text, focusses a non-text
+ * - Removes the flag when the user selects some text, focuses a non-text
  *   field, presses ESC or TAB, or moves the mouse in the document.
  */
 export function useTypingObserver() {
-	const isTyping = useSelect( ( select ) =>
-		select( blockEditorStore ).isTyping()
-	);
+	const { isTyping } = useSelect( ( select ) => {
+		const { isTyping: _isTyping } = select( blockEditorStore );
+		return {
+			isTyping: _isTyping(),
+		};
+	}, [] );
 	const { startTyping, stopTyping } = useDispatch( blockEditorStore );
 
 	const ref1 = useMouseMoveTypingReset();
@@ -125,6 +128,7 @@ export function useTypingObserver() {
 		( node ) => {
 			const { ownerDocument } = node;
 			const { defaultView } = ownerDocument;
+			const selection = defaultView.getSelection();
 
 			// Listeners to stop typing should only be added when typing.
 			// Listeners to start typing should only be added when not typing.
@@ -170,18 +174,14 @@ export function useTypingObserver() {
 				 * uncollapsed (shift) selection.
 				 */
 				function stopTypingOnSelectionUncollapse() {
-					const selection = defaultView.getSelection();
-					const isCollapsed =
-						selection.rangeCount > 0 &&
-						selection.getRangeAt( 0 ).collapsed;
-
-					if ( ! isCollapsed ) {
+					if ( ! selection.isCollapsed ) {
 						stopTyping();
 					}
 				}
 
 				node.addEventListener( 'focus', stopTypingOnNonTextField );
 				node.addEventListener( 'keydown', stopTypingOnEscapeKey );
+
 				ownerDocument.addEventListener(
 					'selectionchange',
 					stopTypingOnSelectionUncollapse

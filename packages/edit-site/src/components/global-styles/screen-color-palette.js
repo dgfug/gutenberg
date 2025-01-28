@@ -2,26 +2,39 @@
  * WordPress dependencies
  */
 import { __ } from '@wordpress/i18n';
+import { privateApis as componentsPrivateApis } from '@wordpress/components';
 
 /**
  * Internal dependencies
  */
 import ColorPalettePanel from './color-palette-panel';
+import GradientPalettePanel from './gradients-palette-panel';
 import ScreenHeader from './header';
+import { unlock } from '../../lock-unlock';
+
+const { Tabs } = unlock( componentsPrivateApis );
 
 function ScreenColorPalette( { name } ) {
-	const parentMenu = name === undefined ? '' : '/blocks/' + name;
-
 	return (
 		<>
 			<ScreenHeader
-				back={ parentMenu + '/colors' }
-				title={ __( 'Color Palette' ) }
+				title={ __( 'Edit palette' ) }
 				description={ __(
-					'Color palettes are used to provide default color options for blocks and various design tools. Here you can edit the colors with their labels.'
+					'The combination of colors used across the site and in color pickers.'
 				) }
 			/>
-			<ColorPalettePanel name={ name } />
+			<Tabs>
+				<Tabs.TabList>
+					<Tabs.Tab tabId="color">{ __( 'Color' ) }</Tabs.Tab>
+					<Tabs.Tab tabId="gradient">{ __( 'Gradient' ) }</Tabs.Tab>
+				</Tabs.TabList>
+				<Tabs.TabPanel tabId="color" focusable={ false }>
+					<ColorPalettePanel name={ name } />
+				</Tabs.TabPanel>
+				<Tabs.TabPanel tabId="gradient" focusable={ false }>
+					<GradientPalettePanel name={ name } />
+				</Tabs.TabPanel>
+			</Tabs>
 		</>
 	);
 }

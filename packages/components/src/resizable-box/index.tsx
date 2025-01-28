@@ -6,11 +6,10 @@ import { forwardRef } from '@wordpress/element';
 /**
  * External dependencies
  */
-import classnames from 'classnames';
+import clsx from 'clsx';
 import { Resizable } from 're-resizable';
 import type { ResizableProps } from 're-resizable';
-// eslint-disable-next-line no-restricted-imports
-import type { ReactNode, Ref } from 'react';
+import type { ReactNode, ForwardedRef } from 'react';
 
 /**
  * Internal dependencies
@@ -22,45 +21,45 @@ const SIDE_HANDLE_CLASS_NAME = 'components-resizable-box__side-handle';
 const CORNER_HANDLE_CLASS_NAME = 'components-resizable-box__corner-handle';
 
 const HANDLE_CLASSES = {
-	top: classnames(
+	top: clsx(
 		HANDLE_CLASS_NAME,
 		SIDE_HANDLE_CLASS_NAME,
 		'components-resizable-box__handle-top'
 	),
-	right: classnames(
+	right: clsx(
 		HANDLE_CLASS_NAME,
 		SIDE_HANDLE_CLASS_NAME,
 		'components-resizable-box__handle-right'
 	),
-	bottom: classnames(
+	bottom: clsx(
 		HANDLE_CLASS_NAME,
 		SIDE_HANDLE_CLASS_NAME,
 		'components-resizable-box__handle-bottom'
 	),
-	left: classnames(
+	left: clsx(
 		HANDLE_CLASS_NAME,
 		SIDE_HANDLE_CLASS_NAME,
 		'components-resizable-box__handle-left'
 	),
-	topLeft: classnames(
+	topLeft: clsx(
 		HANDLE_CLASS_NAME,
 		CORNER_HANDLE_CLASS_NAME,
 		'components-resizable-box__handle-top',
 		'components-resizable-box__handle-left'
 	),
-	topRight: classnames(
+	topRight: clsx(
 		HANDLE_CLASS_NAME,
 		CORNER_HANDLE_CLASS_NAME,
 		'components-resizable-box__handle-top',
 		'components-resizable-box__handle-right'
 	),
-	bottomRight: classnames(
+	bottomRight: clsx(
 		HANDLE_CLASS_NAME,
 		CORNER_HANDLE_CLASS_NAME,
 		'components-resizable-box__handle-bottom',
 		'components-resizable-box__handle-right'
 	),
-	bottomLeft: classnames(
+	bottomLeft: clsx(
 		HANDLE_CLASS_NAME,
 		CORNER_HANDLE_CLASS_NAME,
 		'components-resizable-box__handle-bottom',
@@ -89,14 +88,13 @@ const HANDLE_STYLES = {
 };
 
 type ResizableBoxProps = ResizableProps & {
-	className: string;
 	children: ReactNode;
-	showHandle: boolean;
-	__experimentalShowTooltip: boolean;
-	__experimentalTooltipProps: Parameters< typeof ResizeTooltip >[ 0 ];
+	showHandle?: boolean;
+	__experimentalShowTooltip?: boolean;
+	__experimentalTooltipProps?: Parameters< typeof ResizeTooltip >[ 0 ];
 };
 
-function ResizableBox(
+function UnforwardedResizableBox(
 	{
 		className,
 		children,
@@ -105,14 +103,24 @@ function ResizableBox(
 		__experimentalTooltipProps: tooltipProps = {},
 		...props
 	}: ResizableBoxProps,
-	ref: Ref< Resizable >
+	ref: ForwardedRef< Resizable >
 ): JSX.Element {
 	return (
 		<Resizable
-			className={ classnames(
+			className={ clsx(
 				'components-resizable-box__container',
 				showHandle && 'has-show-handle',
 				className
+			) }
+			// Add a focusable element within the drag handle. Unfortunately,
+			// `re-resizable` does not make them properly focusable by default,
+			// causing focus to move the the block wrapper which triggers block
+			// drag.
+			handleComponent={ Object.fromEntries(
+				Object.keys( HANDLE_CLASSES ).map( ( key ) => [
+					key,
+					<div key={ key } tabIndex={ -1 } />,
+				] )
 			) }
 			handleClasses={ HANDLE_CLASSES }
 			handleStyles={ HANDLE_STYLES }
@@ -125,4 +133,6 @@ function ResizableBox(
 	);
 }
 
-export default forwardRef( ResizableBox );
+export const ResizableBox = forwardRef( UnforwardedResizableBox );
+
+export default ResizableBox;

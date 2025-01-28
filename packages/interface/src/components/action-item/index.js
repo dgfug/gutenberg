@@ -1,17 +1,14 @@
 /**
- * External dependencies
- */
-import { isEmpty, noop } from 'lodash';
-
-/**
  * WordPress dependencies
  */
-import { ButtonGroup, Button, Slot, Fill } from '@wordpress/components';
+import { MenuGroup, Button, Slot, Fill } from '@wordpress/components';
 import { Children } from '@wordpress/element';
+
+const noop = () => {};
 
 function ActionItemSlot( {
 	name,
-	as: Component = ButtonGroup,
+	as: Component = MenuGroup,
 	fillProps = {},
 	bubblesVirtually,
 	...props
@@ -23,7 +20,7 @@ function ActionItemSlot( {
 			fillProps={ fillProps }
 		>
 			{ ( fills ) => {
-				if ( isEmpty( Children.toArray( fills ) ) ) {
+				if ( ! Children.toArray( fills ).length ) {
 					return null;
 				}
 

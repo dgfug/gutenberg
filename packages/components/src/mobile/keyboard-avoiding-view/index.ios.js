@@ -51,21 +51,25 @@ export const KeyboardAvoidingView = ( {
 				setSafeAreaBottomInset( safeAreaInsets.bottom );
 			}
 		);
-		SafeArea.addEventListener(
+		const safeAreaSubscription = SafeArea.addEventListener(
 			'safeAreaInsetsForRootViewDidChange',
 			onSafeAreaInsetsUpdate
 		);
-		Keyboard.addListener( 'keyboardWillShow', onKeyboardWillShow );
-		Keyboard.addListener( 'keyboardWillHide', onKeyboardWillHide );
+		const keyboardShowSubscription = Keyboard.addListener(
+			'keyboardWillShow',
+			onKeyboardWillShow
+		);
+		const keyboardHideSubscription = Keyboard.addListener(
+			'keyboardWillHide',
+			onKeyboardWillHide
+		);
 
 		return () => {
-			SafeArea.removeEventListener(
-				'safeAreaInsetsForRootViewDidChange',
-				onSafeAreaInsetsUpdate
-			);
-			Keyboard.removeListener( 'keyboardWillShow', onKeyboardWillShow );
-			Keyboard.removeListener( 'keyboardWillHide', onKeyboardWillHide );
+			safeAreaSubscription.remove();
+			keyboardShowSubscription.remove();
+			keyboardHideSubscription.remove();
 		};
+		// See https://github.com/WordPress/gutenberg/pull/41166
 	}, [] );
 
 	function onSafeAreaInsetsUpdate( { safeAreaInsets } ) {

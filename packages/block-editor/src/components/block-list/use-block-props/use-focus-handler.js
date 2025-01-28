@@ -30,6 +30,14 @@ export function useFocusHandler( clientId ) {
 			 * @param {FocusEvent} event Focus event.
 			 */
 			function onFocus( event ) {
+				// When the whole editor is editable, let writing flow handle
+				// selection.
+				if (
+					node.parentElement.closest( '[contenteditable="true"]' )
+				) {
+					return;
+				}
+
 				// Check synchronously because a non-selected block might be
 				// getting data through `useSelect` asynchronously.
 				if ( isBlockSelected( clientId ) ) {
@@ -40,7 +48,7 @@ export function useFocusHandler( clientId ) {
 					return;
 				}
 
-				// If an inner block is focussed, that block is resposible for
+				// If an inner block is focussed, that block is responsible for
 				// setting the selected block.
 				if ( ! isInsideRootBlock( node, event.target ) ) {
 					return;

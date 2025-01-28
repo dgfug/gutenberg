@@ -11,7 +11,7 @@ import {
 	store as interfaceStore,
 } from '@wordpress/interface';
 import { __ } from '@wordpress/i18n';
-import { store as keyboardShortcutsStore } from '@wordpress/keyboard-shortcuts';
+import { store as preferencesStore } from '@wordpress/preferences';
 
 /**
  * Internal dependencies
@@ -35,18 +35,13 @@ const interfaceLabels = {
 function Interface( { blockEditorSettings } ) {
 	const isMobileViewport = useViewportMatch( 'medium', '<' );
 	const isHugeViewport = useViewportMatch( 'huge', '>=' );
-	const {
-		setIsInserterOpened,
-		setIsListViewOpened,
-		closeGeneralSidebar,
-	} = useDispatch( editWidgetsStore );
+	const { setIsInserterOpened, setIsListViewOpened, closeGeneralSidebar } =
+		useDispatch( editWidgetsStore );
 	const {
 		hasBlockBreadCrumbsEnabled,
 		hasSidebarEnabled,
 		isInserterOpened,
 		isListViewOpened,
-		previousShortcut,
-		nextShortcut,
 	} = useSelect(
 		( select ) => ( {
 			hasSidebarEnabled: !! select(
@@ -54,17 +49,10 @@ function Interface( { blockEditorSettings } ) {
 			).getActiveComplementaryArea( editWidgetsStore.name ),
 			isInserterOpened: !! select( editWidgetsStore ).isInserterOpened(),
 			isListViewOpened: !! select( editWidgetsStore ).isListViewOpened(),
-			hasBlockBreadCrumbsEnabled: select(
-				interfaceStore
-			).isFeatureActive( 'core/edit-widgets', 'showBlockBreadcrumbs' ),
-			previousShortcut: select(
-				keyboardShortcutsStore
-			).getAllShortcutKeyCombinations(
-				'core/edit-widgets/previous-region'
+			hasBlockBreadCrumbsEnabled: !! select( preferencesStore ).get(
+				'core/edit-widgets',
+				'showBlockBreadcrumbs'
 			),
-			nextShortcut: select(
-				keyboardShortcutsStore
-			).getAllShortcutKeyCombinations( 'core/edit-widgets/next-region' ),
 		} ),
 		[]
 	);
@@ -83,20 +71,27 @@ function Interface( { blockEditorSettings } ) {
 		}
 	}, [ isInserterOpened, isListViewOpened, isHugeViewport ] );
 
+	const secondarySidebarLabel = isListViewOpened
+		? __( 'List View' )
+		: __( 'Block Library' );
+
+	const hasSecondarySidebar = isListViewOpened || isInserterOpened;
+
 	return (
 		<InterfaceSkeleton
-			labels={ interfaceLabels }
+			labels={ {
+				...interfaceLabels,
+				secondarySidebar: secondarySidebarLabel,
+			} }
 			header={ <Header /> }
-			secondarySidebar={ <SecondarySidebar /> }
-			sidebar={
-				hasSidebarEnabled && (
-					<ComplementaryArea.Slot scope="core/edit-widgets" />
-				)
-			}
+			secondarySidebar={ hasSecondarySidebar && <SecondarySidebar /> }
+			sidebar={ <ComplementaryArea.Slot scope="core/edit-widgets" /> }
 			content={
-				<WidgetAreasBlockEditorContent
-					blockEditorSettings={ blockEditorSettings }
-				/>
+				<>
+					<WidgetAreasBlockEditorContent
+						blockEditorSettings={ blockEditorSettings }
+					/>
+				</>
 			}
 			footer={
 				hasBlockBreadCrumbsEnabled &&
@@ -106,10 +101,6 @@ function Interface( { blockEditorSettings } ) {
 					</div>
 				)
 			}
-			shortcuts={ {
-				previous: previousShortcut,
-				next: nextShortcut,
-			} }
 		/>
 	);
 }

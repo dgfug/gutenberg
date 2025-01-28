@@ -7,10 +7,10 @@ import domReady from '@wordpress/dom-ready';
  * Internal dependencies
  */
 import { setup, speak } from '../';
-import clear from '../clear';
-import filterMessage from '../filter-message';
+import clear from '../shared/clear';
+import filterMessage from '../shared/filter-message';
 
-jest.mock( '../clear', () => {
+jest.mock( '../shared/clear', () => {
 	return jest.fn();
 } );
 jest.mock( '@wordpress/dom-ready', () => {
@@ -18,7 +18,7 @@ jest.mock( '@wordpress/dom-ready', () => {
 		callback();
 	} );
 } );
-jest.mock( '../filter-message', () => {
+jest.mock( '../shared/filter-message', () => {
 	return jest.fn( ( message ) => {
 		return message;
 	} );
@@ -42,8 +42,8 @@ describe( 'speak', () => {
 	describe( 'in default mode', () => {
 		it( 'should set the textcontent of the polite aria-live region', () => {
 			speak( 'default message' );
-			expect( containerPolite.textContent ).toBe( 'default message' );
-			expect( containerAssertive.textContent ).toBe( '' );
+			expect( containerPolite ).toHaveTextContent( 'default message' );
+			expect( containerAssertive ).toBeEmptyDOMElement();
 			expect( clear ).toHaveBeenCalled();
 			expect( filterMessage ).toHaveBeenCalledWith( 'default message' );
 		} );
@@ -52,8 +52,8 @@ describe( 'speak', () => {
 	describe( 'in assertive mode', () => {
 		it( 'should set the textcontent of the assertive aria-live region', () => {
 			speak( 'assertive message', 'assertive' );
-			expect( containerPolite.textContent ).toBe( '' );
-			expect( containerAssertive.textContent ).toBe(
+			expect( containerPolite ).toBeEmptyDOMElement();
+			expect( containerAssertive ).toHaveTextContent(
 				'assertive message'
 			);
 		} );
@@ -62,8 +62,8 @@ describe( 'speak', () => {
 	describe( 'in explicit polite mode', () => {
 		it( 'should set the textcontent of the polite aria-live region', () => {
 			speak( 'polite message', 'polite' );
-			expect( containerPolite.textContent ).toBe( 'polite message' );
-			expect( containerAssertive.textContent ).toBe( '' );
+			expect( containerPolite ).toHaveTextContent( 'polite message' );
+			expect( containerAssertive ).toBeEmptyDOMElement();
 		} );
 	} );
 
@@ -81,7 +81,7 @@ describe( 'speak', () => {
 
 		it( 'should set the textcontent of the polite aria-live region', () => {
 			speak( 'message', 'assertive' );
-			expect( containerPolite.textContent ).toBe( 'message' );
+			expect( containerPolite ).toHaveTextContent( 'message' );
 			expect(
 				document.getElementById( 'a11y-speak-assertive' )
 			).toBeNull();
@@ -112,12 +112,11 @@ describe( 'speak', () => {
 
 	describe( 'setup when the elements already exist', () => {
 		it( 'should not create the aria live regions again', () => {
-			const before = document.getElementsByClassName(
-				'a11y-speak-region'
-			).length;
+			const before =
+				document.getElementsByClassName( 'a11y-speak-region' ).length;
 			setup();
-			const after = document.getElementsByClassName( 'a11y-speak-region' )
-				.length;
+			const after =
+				document.getElementsByClassName( 'a11y-speak-region' ).length;
 
 			expect( before ).toBe( after );
 		} );

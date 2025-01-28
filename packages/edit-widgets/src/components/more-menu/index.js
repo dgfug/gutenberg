@@ -1,11 +1,16 @@
 /**
  * WordPress dependencies
  */
-import { MenuGroup, MenuItem, VisuallyHidden } from '@wordpress/components';
+import {
+	MenuGroup,
+	MenuItem,
+	VisuallyHidden,
+	DropdownMenu,
+} from '@wordpress/components';
 import { useState } from '@wordpress/element';
 import { __, _x } from '@wordpress/i18n';
-import { external } from '@wordpress/icons';
-import { MoreMenuDropdown, MoreMenuFeatureToggle } from '@wordpress/interface';
+import { external, moreVertical } from '@wordpress/icons';
+import { PreferenceToggleMenuItem } from '@wordpress/preferences';
 import { displayShortcut } from '@wordpress/keycodes';
 import { useShortcut } from '@wordpress/keyboard-shortcuts';
 import { useViewportMatch } from '@wordpress/compose';
@@ -14,6 +19,7 @@ import { useViewportMatch } from '@wordpress/compose';
  * Internal dependencies
  */
 import KeyboardShortcutHelpModal from '../keyboard-shortcut-help-modal';
+import ToolsMoreMenuGroup from './tools-more-menu-group';
 
 export default function MoreMenu() {
 	const [
@@ -32,14 +38,25 @@ export default function MoreMenu() {
 
 	return (
 		<>
-			<MoreMenuDropdown>
-				{ () => (
+			<DropdownMenu
+				icon={ moreVertical }
+				label={ __( 'Options' ) }
+				popoverProps={ {
+					placement: 'bottom-end',
+					className: 'more-menu-dropdown__content',
+				} }
+				toggleProps={ {
+					tooltipPosition: 'bottom',
+					size: 'compact',
+				} }
+			>
+				{ ( onClose ) => (
 					<>
 						{ isLargeViewport && (
 							<MenuGroup label={ _x( 'View', 'noun' ) }>
-								<MoreMenuFeatureToggle
+								<PreferenceToggleMenuItem
 									scope="core/edit-widgets"
-									feature="fixedToolbar"
+									name="fixedToolbar"
 									label={ __( 'Top toolbar' ) }
 									info={ __(
 										'Access all block and document tools in a single place'
@@ -62,16 +79,16 @@ export default function MoreMenu() {
 							>
 								{ __( 'Keyboard shortcuts' ) }
 							</MenuItem>
-							<MoreMenuFeatureToggle
+							<PreferenceToggleMenuItem
 								scope="core/edit-widgets"
-								feature="welcomeGuide"
+								name="welcomeGuide"
 								label={ __( 'Welcome Guide' ) }
 							/>
 							<MenuItem
 								role="menuitem"
 								icon={ external }
 								href={ __(
-									'https://wordpress.org/support/article/block-based-widgets-editor/'
+									'https://wordpress.org/documentation/article/block-based-widgets-editor/'
 								) }
 								target="_blank"
 								rel="noopener noreferrer"
@@ -84,11 +101,14 @@ export default function MoreMenu() {
 									}
 								</VisuallyHidden>
 							</MenuItem>
+							<ToolsMoreMenuGroup.Slot
+								fillProps={ { onClose } }
+							/>
 						</MenuGroup>
 						<MenuGroup label={ __( 'Preferences' ) }>
-							<MoreMenuFeatureToggle
+							<PreferenceToggleMenuItem
 								scope="core/edit-widgets"
-								feature="keepCaretInsideBlock"
+								name="keepCaretInsideBlock"
 								label={ __(
 									'Contain text cursor inside block'
 								) }
@@ -102,18 +122,18 @@ export default function MoreMenu() {
 									'Contain text cursor inside block deactivated'
 								) }
 							/>
-							<MoreMenuFeatureToggle
+							<PreferenceToggleMenuItem
 								scope="core/edit-widgets"
-								feature="themeStyles"
+								name="themeStyles"
 								info={ __(
 									'Make the editor look like your theme.'
 								) }
 								label={ __( 'Use theme styles' ) }
 							/>
 							{ isLargeViewport && (
-								<MoreMenuFeatureToggle
+								<PreferenceToggleMenuItem
 									scope="core/edit-widgets"
-									feature="showBlockBreadcrumbs"
+									name="showBlockBreadcrumbs"
 									label={ __( 'Display block breadcrumbs' ) }
 									info={ __(
 										'Shows block breadcrumbs at the bottom of the editor.'
@@ -129,7 +149,7 @@ export default function MoreMenu() {
 						</MenuGroup>
 					</>
 				) }
-			</MoreMenuDropdown>
+			</DropdownMenu>
 			<KeyboardShortcutHelpModal
 				isModalActive={ isKeyboardShortcutsModalActive }
 				toggleModal={ toggleKeyboardShortcutsModal }

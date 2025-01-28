@@ -1,6 +1,6 @@
 # Styles
 
-Block Styles allow alternative styles to be applied to existing blocks. They work by adding a className to the block's wrapper. This className can be used to provide an alternative styling for the block if the block style is selected. See the [Getting Started with JavaScript tutorial](/docs/how-to-guides/javascript/) for a full example.
+Block Styles allow alternative styles to be applied to existing blocks. They work by adding a className to the block's wrapper. This className can be used to provide an alternative styling for the block if the block style is selected. See the [Use styles and stylesheets](/docs/how-to-guides/block-tutorial/applying-styles-with-stylesheets.md) for a full example on how to apply styles to a block.
 
 _Example:_
 
@@ -84,7 +84,7 @@ register_block_style(
 );
 ```
 
-Alternatively, if a stylesheet was already registered which contains the CSS for the block style, it is possible to just pass the stylesheet's handle so `register_block_style` function will make sure it is enqueue.
+Alternatively, if a stylesheet was already registered which contains the CSS for the block style, it is possible to just pass the stylesheet's handle so `register_block_style` function will make sure it is enqueued.
 
 The following code sample provides an example of this use case:
 

@@ -1,21 +1,20 @@
 /**
  * External dependencies
  */
-import { noop } from 'lodash';
-import classnames from 'classnames';
+import clsx from 'clsx';
+import type { Ref, ForwardedRef } from 'react';
 
 /**
  * WordPress dependencies
  */
 import { forwardRef } from '@wordpress/element';
-// eslint-disable-next-line no-restricted-imports
-import type { Ref } from 'react';
 
 /**
  * Internal dependencies
  */
 import Label from './label';
-import { useResizeLabel, Axis, Position, POSITIONS } from './utils';
+import type { Axis, Position } from './utils';
+import { useResizeLabel, POSITIONS } from './utils';
 import { Root } from './styles/resize-tooltip.styles';
 
 type ResizeTooltipProps = React.ComponentProps< typeof Root > & {
@@ -31,6 +30,8 @@ type ResizeTooltipProps = React.ComponentProps< typeof Root > & {
 	zIndex?: number;
 };
 
+const noop = () => {};
+
 function ResizeTooltip(
 	{
 		axis,
@@ -44,7 +45,7 @@ function ResizeTooltip(
 		zIndex = 1000,
 		...props
 	}: ResizeTooltipProps,
-	ref: Ref< HTMLDivElement >
+	ref: ForwardedRef< HTMLDivElement >
 ): JSX.Element | null {
 	const { label, resizeListener } = useResizeLabel( {
 		axis,
@@ -54,9 +55,11 @@ function ResizeTooltip(
 		position,
 	} );
 
-	if ( ! isVisible ) return null;
+	if ( ! isVisible ) {
+		return null;
+	}
 
-	const classes = classnames( 'components-resize-tooltip', className );
+	const classes = clsx( 'components-resize-tooltip', className );
 
 	return (
 		<Root aria-hidden="true" className={ classes } ref={ ref } { ...props }>

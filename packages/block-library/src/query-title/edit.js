@@ -1,40 +1,55 @@
 /**
  * External dependencies
  */
-import classnames from 'classnames';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
  */
-// import { useSelect, useDispatch } from '@wordpress/data';
 import {
 	AlignmentControl,
 	BlockControls,
+	InspectorControls,
 	useBlockProps,
 	Warning,
+	HeadingLevelDropdown,
 } from '@wordpress/block-editor';
-import { __ } from '@wordpress/i18n';
+import {
+	ToggleControl,
+	__experimentalToolsPanel as ToolsPanel,
+	__experimentalToolsPanelItem as ToolsPanelItem,
+} from '@wordpress/components';
+import { __, _x, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
-import HeadingLevelDropdown from '../heading/heading-level-dropdown';
+import { useArchiveLabel } from './use-archive-label';
+import { useToolsPanelDropdownMenuProps } from '../utils/hooks';
 
-const SUPPORTED_TYPES = [ 'archive' ];
+const SUPPORTED_TYPES = [ 'archive', 'search' ];
 
 export default function QueryTitleEdit( {
-	attributes: { type, level, textAlign },
+	attributes: {
+		type,
+		level,
+		levelOptions,
+		textAlign,
+		showPrefix,
+		showSearchTerm,
+	},
 	setAttributes,
 } ) {
+	const { archiveTypeLabel, archiveNameLabel } = useArchiveLabel();
+	const dropdownMenuProps = useToolsPanelDropdownMenuProps();
+
 	const TagName = `h${ level }`;
 	const blockProps = useBlockProps( {
-		className: classnames( {
+		className: clsx( 'wp-block-query-title__placeholder', {
 			[ `has-text-align-${ textAlign }` ]: textAlign,
-			'wp-block-query-title__placeholder': type === 'archive',
 		} ),
 	} );
-	// The plan is to augment this block with more
-	// block variations like `Search Title`.
+
 	if ( ! SUPPORTED_TYPES.includes( type ) ) {
 		return (
 			<div { ...blockProps }>
@@ -45,15 +60,126 @@ export default function QueryTitleEdit( {
 
 	let titleElement;
 	if ( type === 'archive' ) {
+		let title;
+		if ( archiveTypeLabel ) {
+			if ( showPrefix ) {
+				if ( archiveNameLabel ) {
+					title = sprintf(
+						/* translators: 1: Archive type title e.g: "Category", 2: Label of the archive e.g: "Shoes" */
+						_x( '%1$s: %2$s', 'archive label' ),
+						archiveTypeLabel,
+						archiveNameLabel
+					);
+				} else {
+					title = sprintf(
+						/* translators: %s: Archive type title e.g: "Category", "Tag"... */
+						__( '%s: Name' ),
+						archiveTypeLabel
+					);
+				}
+			} else if ( archiveNameLabel ) {
+				title = archiveNameLabel;
+			} else {
+				title = sprintf(
+					/* translators: %s: Archive type title e.g: "Category", "Tag"... */
+					__( '%s name' ),
+					archiveTypeLabel
+				);
+			}
+		} else {
+			title = showPrefix
+				? __( 'Archive type: Name' )
+				: __( 'Archive title' );
+		}
+
 		titleElement = (
-			<TagName { ...blockProps }>{ __( 'Archive title' ) }</TagName>
+			<>
+				<InspectorControls>
+					<ToolsPanel
+						label={ __( 'Settings' ) }
+						resetAll={ () =>
+							setAttributes( {
+								showPrefix: true,
+							} )
+						}
+						dropdownMenuProps={ dropdownMenuProps }
+					>
+						<ToolsPanelItem
+							hasValue={ () => ! showPrefix }
+							label={ __( 'Show archive type in title' ) }
+							onDeselect={ () =>
+								setAttributes( { showPrefix: true } )
+							}
+							isShownByDefault
+						>
+							<ToggleControl
+								__nextHasNoMarginBottom
+								label={ __( 'Show archive type in title' ) }
+								onChange={ () =>
+									setAttributes( {
+										showPrefix: ! showPrefix,
+									} )
+								}
+								checked={ showPrefix }
+							/>
+						</ToolsPanelItem>
+					</ToolsPanel>
+				</InspectorControls>
+				<TagName { ...blockProps }>{ title }</TagName>
+			</>
 		);
 	}
+
+	if ( type === 'search' ) {
+		titleElement = (
+			<>
+				<InspectorControls>
+					<ToolsPanel
+						label={ __( 'Settings' ) }
+						resetAll={ () =>
+							setAttributes( {
+								showSearchTerm: true,
+							} )
+						}
+						dropdownMenuProps={ dropdownMenuProps }
+					>
+						<ToolsPanelItem
+							hasValue={ () => ! showSearchTerm }
+							label={ __( 'Show search term in title' ) }
+							onDeselect={ () =>
+								setAttributes( { showSearchTerm: true } )
+							}
+							isShownByDefault
+						>
+							<ToggleControl
+								__nextHasNoMarginBottom
+								label={ __( 'Show search term in title' ) }
+								onChange={ () =>
+									setAttributes( {
+										showSearchTerm: ! showSearchTerm,
+									} )
+								}
+								checked={ showSearchTerm }
+							/>
+						</ToolsPanelItem>
+					</ToolsPanel>
+				</InspectorControls>
+
+				<TagName { ...blockProps }>
+					{ showSearchTerm
+						? __( 'Search results for: “search term”' )
+						: __( 'Search results' ) }
+				</TagName>
+			</>
+		);
+	}
+
 	return (
 		<>
 			<BlockControls group="block">
 				<HeadingLevelDropdown
-					selectedLevel={ level }
+					value={ level }
+					options={ levelOptions }
 					onChange={ ( newLevel ) =>
 						setAttributes( { level: newLevel } )
 					}

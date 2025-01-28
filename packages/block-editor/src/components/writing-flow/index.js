@@ -1,7 +1,7 @@
 /**
  * External dependencies
  */
-import classNames from 'classnames';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
@@ -18,6 +18,11 @@ import useMultiSelection from './use-multi-selection';
 import useTabNav from './use-tab-nav';
 import useArrowNav from './use-arrow-nav';
 import useSelectAll from './use-select-all';
+import useDragSelection from './use-drag-selection';
+import useSelectionObserver from './use-selection-observer';
+import useClickSelection from './use-click-selection';
+import useInput from './use-input';
+import useClipboardHandler from './use-clipboard-handler';
 import { store as blockEditorStore } from '../../store';
 
 export function useWritingFlow() {
@@ -31,15 +36,23 @@ export function useWritingFlow() {
 		before,
 		useMergeRefs( [
 			ref,
+			useClipboardHandler(),
+			useInput(),
+			useDragSelection(),
+			useSelectionObserver(),
+			useClickSelection(),
 			useMultiSelection(),
 			useSelectAll(),
 			useArrowNav(),
 			useRefEffect(
 				( node ) => {
-					node.tabIndex = -1;
+					node.tabIndex = 0;
+					node.dataset.hasMultiSelection = hasMultiSelection;
 
 					if ( ! hasMultiSelection ) {
-						return;
+						return () => {
+							delete node.dataset.hasMultiSelection;
+						};
 					}
 
 					node.setAttribute(
@@ -48,6 +61,7 @@ export function useWritingFlow() {
 					);
 
 					return () => {
+						delete node.dataset.hasMultiSelection;
 						node.removeAttribute( 'aria-label' );
 					};
 				},
@@ -66,7 +80,7 @@ function WritingFlow( { children, ...props }, forwardedRef ) {
 			<div
 				{ ...props }
 				ref={ useMergeRefs( [ ref, forwardedRef ] ) }
-				className={ classNames(
+				className={ clsx(
 					props.className,
 					'block-editor-writing-flow'
 				) }
@@ -82,7 +96,7 @@ function WritingFlow( { children, ...props }, forwardedRef ) {
  * Handles selection and navigation across blocks. This component should be
  * wrapped around BlockList.
  *
- * @param {Object}    props          Component properties.
- * @param {WPElement} props.children Children to be rendered.
+ * @param {Object}  props          Component properties.
+ * @param {Element} props.children Children to be rendered.
  */
 export default forwardRef( WritingFlow );

@@ -1,7 +1,7 @@
 /**
  * Internal dependencies
  */
-import filterMessage from './filter-message';
+import filterMessage from './shared/filter-message';
 
 /**
  * Update the ARIA live notification area text node.
@@ -11,7 +11,7 @@ import filterMessage from './filter-message';
  */
 export function speak( message, ariaLive ) {
 	message = filterMessage( message );
-	//TODO: Use native module to speak message
+	// TODO: Use native module to speak message.
 	if ( ariaLive === 'assertive' ) {
 	} else {
 	}

@@ -2,7 +2,7 @@
  * WordPress dependencies
  */
 import { __ } from '@wordpress/i18n';
-import { archiveTitle } from '@wordpress/icons';
+import { title } from '@wordpress/icons';
 const variations = [
 	{
 		isDefault: true,
@@ -11,9 +11,22 @@ const variations = [
 		description: __(
 			'Display the archive title based on the queried object.'
 		),
-		icon: archiveTitle,
+		icon: title,
 		attributes: {
 			type: 'archive',
+		},
+		scope: [ 'inserter' ],
+	},
+	{
+		isDefault: false,
+		name: 'search-title',
+		title: __( 'Search Results Title' ),
+		description: __(
+			'Display the search results title based on the queried object.'
+		),
+		icon: title,
+		attributes: {
+			type: 'search',
 		},
 		scope: [ 'inserter' ],
 	},
@@ -25,7 +38,9 @@ const variations = [
  *  Block by providing its attributes.
  */
 variations.forEach( ( variation ) => {
-	if ( variation.isActive ) return;
+	if ( variation.isActive ) {
+		return;
+	}
 	variation.isActive = ( blockAttributes, variationAttributes ) =>
 		blockAttributes.type === variationAttributes.type;
 } );

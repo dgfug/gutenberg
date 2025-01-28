@@ -2,7 +2,9 @@
 
 End-To-End (E2E) test utils for WordPress.
 
-_It works properly with the minimum version of Gutenberg `9.2.0` or the minimum version of WordPress `5.6.0`._
+_It works properly with the minimum version of Gutenberg `13.8.0` or the minimum version of WordPress `6.0.0`._
+
+**Note that there's currently an ongoing [project](https://github.com/WordPress/gutenberg/issues/38851) to migrate E2E tests to Playwright instead. This package is deprecated and will only accept bug fixes until fully migrated.**
 
 ## Installation
 
@@ -12,7 +14,7 @@ Install the module
 npm install @wordpress/e2e-test-utils --save-dev
 ```
 
-**Note**: This package requires Node.js 12.0.0 or later. It is not compatible with older versions.
+**Note**: This package requires Node.js version with long-term support status (check [Active LTS or Maintenance LTS releases](https://nodejs.org/en/about/previous-releases)). It is not compatible with older versions.
 
 ## API
 
@@ -109,7 +111,7 @@ _Parameters_
 
 ### closeGlobalBlockInserter
 
-Undocumented declaration.
+Closes the global inserter.
 
 ### closeListView
 
@@ -161,6 +163,23 @@ _Parameters_
 -   _object.excerpt_ `[string]`: Excerpt of the new post.
 -   _object.showWelcomeGuide_ `[boolean]`: Whether to show the welcome guide.
 
+### createNewTemplate
+
+Opens the template editor with a newly created template.
+
+_Parameters_
+
+-   _name_ `string`: Name of the template.
+
+### createReusableBlock
+
+Creates a simple reusable block with a paragraph block.
+
+_Parameters_
+
+-   _content_ `string`: Paragraph block's content
+-   _title_ `title`: Reusable block's name.
+
 ### createURL
 
 Creates new URL by parsing base URL, WPPath and query string.
@@ -193,7 +212,7 @@ Create a new user account.
 _Parameters_
 
 -   _username_ `string`: User name.
--   _object_ `Object?`: Optional Settings for the new user account.
+-   _object_ `?Object`: Optional Settings for the new user account.
 -   _object.firstName_ `[string]`: First name.
 -   _object.lastName_ `[string]`: Last name.
 -   _object.role_ `[string]`: Role. Defaults to Administrator.
@@ -214,6 +233,14 @@ _Parameters_
 
 Delete all menus using the REST API
 
+### deleteAllTemplates
+
+Delete all the templates of given type.
+
+_Parameters_
+
+-   _type_ `('wp_template'|'wp_template_part')`: - Template type to delete.
+
 ### deleteAllWidgets
 
 Delete all the widgets in the widgets screen.
@@ -225,9 +252,9 @@ Deletes a theme from the site, activating another theme if necessary.
 _Parameters_
 
 -   _slug_ `string`: Theme slug.
--   _settings_ `Object?`: Optional settings object.
--   _settings.newThemeSlug_ `string?`: A theme to switch to if the theme to delete is active. Required if the theme to delete is active.
--   _settings.newThemeSearchTerm_ `string?`: A search term to use if the new theme is not findable by its slug.
+-   _settings_ `?Object`: Optional settings object.
+-   _settings.newThemeSlug_ `?string`: A theme to switch to if the theme to delete is active. Required if the theme to delete is active.
+-   _settings.newThemeSearchTerm_ `?string`: A search term to use if the new theme is not findable by its slug.
 
 ### deleteUser
 
@@ -249,6 +276,10 @@ Disable auto-accepting any dialogs.
 
 Disables Pre-publish checks.
 
+### disableSiteEditorWelcomeGuide
+
+Skips the welcome guide popping up to first time users of the site editor
+
 ### dragAndResize
 
 Clicks an element, drags a particular distance and releases the mouse button.
@@ -266,8 +297,7 @@ _Returns_
 
 ### enableFocusLossObservation
 
-Adds an event listener to the document which throws an error if there is a
-loss of focus.
+Adds an event listener to the document which throws an error if there is a loss of focus.
 
 ### enablePageDialogAccept
 
@@ -279,11 +309,15 @@ Enables Pre-publish checks.
 
 ### ensureSidebarOpened
 
-Verifies that the edit post sidebar is opened, and if it is not, opens it.
+Verifies that the edit post/site/widgets sidebar is opened, and if it is not, opens it.
 
 _Returns_
 
--   `Promise`: Promise resolving once the edit post sidebar is opened.
+-   `Promise`: Promise resolving once the sidebar is opened.
+
+### enterEditMode
+
+Enters edit mode.
 
 ### findSidebarPanelToggleButtonWithTitle
 
@@ -327,8 +361,7 @@ _Returns_
 
 ### getAvailableBlockTransforms
 
-Returns an array of strings with all block titles,
-that the current selected block can be transformed into.
+Returns an array of strings with all block titles, that the current selected block can be transformed into.
 
 _Returns_
 
@@ -355,6 +388,14 @@ _Returns_
 
 -   `Promise`: Promise resolving with current post content markup.
 
+### getCurrentSiteEditorContent
+
+Returns a promise which resolves with the edited post content (HTML string).
+
+_Returns_
+
+-   `Promise<string>`: Promise resolving with post content markup.
+
 ### getEditedPostContent
 
 Returns a promise which resolves with the edited post content (HTML string).
@@ -363,12 +404,33 @@ _Returns_
 
 -   `Promise`: Promise resolving with post content markup.
 
+### getListViewBlocks
+
+Gets all block anchor nodes in the list view that match a given block name label.
+
+_Parameters_
+
+-   _blockLabel_ `string`: the label of the block as displayed in the ListView.
+
+_Returns_
+
+-   `Promise`: all the blocks anchor nodes matching the label in the ListView.
+
+### getOption
+
+Returns a site option, from the options admin page.
+
+_Parameters_
+
+-   _setting_ `string`: The option, used to get the option by id.
+
+_Returns_
+
+-   `string`: The value of the option.
+
 ### getPageError
 
-Returns a promise resolving to one of either a string or null. A string will
-be resolved if an error message is present in the contents of the page. If no
-error is present, a null value will be resolved instead. This requires the
-environment be configured to display errors.
+Returns a promise resolving to one of either a string or null. A string will be resolved if an error message is present in the contents of the page. If no error is present, a null value will be resolved instead. This requires the environment be configured to display errors.
 
 _Related_
 
@@ -388,41 +450,27 @@ _Returns_
 
 ### insertBlock
 
-Opens the inserter, searches for the given term, then selects the first
-result that appears. It then waits briefly for the block list to update.
+Inserts a block matching a given search term via the global inserter.
 
 _Parameters_
 
--   _searchTerm_ `string`: The text to search the inserter for.
+-   _searchTerm_ `string`: The term by which to find the block to insert.
 
 ### insertBlockDirectoryBlock
 
-Opens the inserter, searches for the given block, then selects the
-first result that appears from the block directory. It then waits briefly for the block list to
-update.
+Inserts a Block Directory block matching a given search term via the global inserter.
 
 _Parameters_
 
--   _searchTerm_ `string`: The text to search the inserter for.
+-   _searchTerm_ `string`: The term by which to find the Block Directory block to insert.
 
 ### insertPattern
 
-Opens the inserter, searches for the given pattern, then selects the first
-result that appears. It then waits briefly for the block list to update.
+Inserts a pattern matching a given search term via the global inserter.
 
 _Parameters_
 
--   _searchTerm_ `string`: The text to search the inserter for.
-
-### insertReusableBlock
-
-Opens the inserter, searches for the given reusable block, then selects the
-first result that appears. It then waits briefly for the block list to
-update.
-
-_Parameters_
-
--   _searchTerm_ `string`: The text to search the inserter for.
+-   _searchTerm_ `string`: The term by which to find the pattern to insert.
 
 ### installPlugin
 
@@ -431,7 +479,7 @@ Installs a plugin from the WP.org repository.
 _Parameters_
 
 -   _slug_ `string`: Plugin slug.
--   _searchTerm_ `string?`: If the plugin is not findable by its slug use an alternative term to search.
+-   _searchTerm_ `?string`: If the plugin is not findable by its slug use an alternative term to search.
 
 ### installTheme
 
@@ -440,8 +488,8 @@ Installs a theme from the WP.org repository.
 _Parameters_
 
 -   _slug_ `string`: Theme slug.
--   _settings_ `Object?`: Optional settings object.
--   _settings.searchTerm_ `string?`: Search term to use if the theme is not findable by its slug.
+-   _settings_ `?Object`: Optional settings object.
+-   _settings.searchTerm_ `?string`: Search term to use if the theme is not findable by its slug.
 
 ### isCurrentURL
 
@@ -463,6 +511,10 @@ Checks if the block that is focused is the default block.
 _Returns_
 
 -   `Promise`: Promise resolving with a boolean indicating if the focused block is the default block.
+
+### isListViewOpen
+
+Undocumented declaration.
 
 ### isOfflineMode
 
@@ -489,10 +541,13 @@ _Parameters_
 -   _username_ `?string`: String to be used as user credential.
 -   _password_ `?string`: String to be used as user credential.
 
+### logout
+
+Performs log out.
+
 ### mockOrTransform
 
-Mocks a request with the supplied mock object, or allows it to run with an optional transform, based on the
-deserialised JSON response for the request.
+Mocks a request with the supplied mock object, or allows it to run with an optional transform, based on the deserialised JSON response for the request.
 
 _Parameters_
 
@@ -510,7 +565,15 @@ Clicks on the button in the header which opens Document Settings sidebar when it
 
 ### openGlobalBlockInserter
 
-Opens the global block inserter.
+Opens the global inserter.
+
+### openGlobalStylesPanel
+
+Opens a global styles panel.
+
+_Parameters_
+
+-   _panelName_ `string`: Name of the panel that is going to be opened.
 
 ### openListView
 
@@ -528,9 +591,17 @@ _Returns_
 
 -   `Page`: preview page.
 
+### openPreviousGlobalStylesPanel
+
+Opens the previous global styles panel.
+
 ### openPublishPanel
 
 Opens the publish panel.
+
+### openTypographyToolsPanelMenu
+
+Opens the Typography tools panel menu provided via block supports.
 
 ### pressKeyTimes
 
@@ -543,8 +614,7 @@ _Parameters_
 
 ### pressKeyWithModifier
 
-Performs a key press with modifier (Shift, Control, Meta, Alt), where each modifier
-is normalized to platform-specific modifier.
+Performs a key press with modifier (Shift, Control, Meta, Alt), where each modifier is normalized to platform-specific modifier.
 
 _Parameters_
 
@@ -553,8 +623,7 @@ _Parameters_
 
 ### publishPost
 
-Publishes the post, resolving once the request is complete (once a notice
-is displayed).
+Publishes the post, resolving once the request is complete (once a notice is displayed).
 
 _Returns_
 
@@ -562,17 +631,19 @@ _Returns_
 
 ### publishPostWithPrePublishChecksDisabled
 
-Publishes the post without the pre-publish checks,
-resolving once the request is complete (once a notice is displayed).
+Publishes the post without the pre-publish checks, resolving once the request is complete (once a notice is displayed).
 
 _Returns_
 
 -   `Promise`: Promise resolving when publish is complete.
 
+### resetPreferences
+
+Clears all user meta preferences.
+
 ### saveDraft
 
-Saves the post as a draft, resolving once the request is complete (once the
-"Saved" indicator is displayed).
+Saves the post as a draft, resolving once the request is complete (once the "Saved" indicator is displayed).
 
 _Returns_
 
@@ -580,27 +651,51 @@ _Returns_
 
 ### searchForBlock
 
-Search for block in the global inserter
+Searches for a block via the global inserter.
 
 _Parameters_
 
--   _searchTerm_ `string`: The text to search the inserter for.
+-   _searchTerm_ `string`: The term to search the inserter for.
+
+_Returns_
+
+-   `Promise<ElementHandle|null>`: The handle of block to be inserted or null if nothing was found.
+
+### searchForBlockDirectoryBlock
+
+Searches for a Block Directory block via the global inserter.
+
+_Parameters_
+
+-   _searchTerm_ `string`: The term to search the inserter for.
+
+_Returns_
+
+-   `Promise<ElementHandle|null>`: The handle of the Block Directory block to be inserted or null if nothing was found.
 
 ### searchForPattern
 
-Search for pattern in the global inserter
+Searches for a pattern via the global inserter.
 
 _Parameters_
 
--   _searchTerm_ `string`: The text to search the inserter for.
+-   _searchTerm_ `string`: The term to search the inserter for.
+
+_Returns_
+
+-   `Promise<ElementHandle|null>`: The handle of the pattern to be inserted or null if nothing was found.
 
 ### searchForReusableBlock
 
-Search for reusable block in the global inserter.
+Searches for a reusable block via the global inserter.
 
 _Parameters_
 
--   _searchTerm_ `string`: The text to search the inserter for.
+-   _searchTerm_ `string`: The term to search the inserter for.
+
+_Returns_
+
+-   `Promise<ElementHandle|null>`: The handle of the reusable block to be inserted or null if nothing was found.
 
 ### selectBlockByClientId
 
@@ -620,14 +715,26 @@ _Parameters_
 
 ### setClipboardData
 
-Sets the clipboard data that can be pasted with
-`pressKeyWithModifier( 'primary', 'v' )`.
+Sets the clipboard data that can be pasted with `pressKeyWithModifier( 'primary', 'v' )`.
 
 _Parameters_
 
 -   _$1_ `Object`: Options.
 -   _$1.plainText_ `string`: Plain text to set.
 -   _$1.html_ `string`: HTML to set.
+
+### setOption
+
+Sets a site option, from the options-general admin page.
+
+_Parameters_
+
+-   _setting_ `string`: The option, used to get the option by id.
+-   _value_ `string`: The value to set the option to.
+
+_Returns_
+
+-   `string`: The previous value of the option.
 
 ### setPostContent
 
@@ -674,8 +781,15 @@ _Parameters_
 
 ### showBlockToolbar
 
-The block toolbar is not always visible while typing.
-Call this function to reveal it.
+The block toolbar is not always visible while typing. Call this function to reveal it.
+
+### switchBlockInspectorTab
+
+Clicks on the block inspector tab button with the supplied label and waits for the tab switch.
+
+_Parameters_
+
+-   _label_ `string`: Aria label to find tab button by.
 
 ### switchEditorModeTo
 
@@ -687,21 +801,27 @@ _Parameters_
 
 ### switchUserToAdmin
 
-Switches the current user to the admin user (if the user
-running the test is not already the admin user).
+Switches the current user to the admin user (if the user running the test is not already the admin user).
 
 ### switchUserToTest
 
-Switches the current user to whichever user we should be
-running the tests as (if we're not already that user).
+Switches the current user to whichever user we should be running the tests as (if we're not already that user).
 
 ### toggleGlobalBlockInserter
 
 Toggles the global inserter.
 
+### toggleGlobalStyles
+
+Toggles the global styles sidebar (opens it if closed and closes it if open).
+
 ### toggleMoreMenu
 
 Toggles the More Menu.
+
+_Parameters_
+
+-   _waitFor_ `['open' | 'close']`: Whether it should wait for the menu to open or close. If `undefined` it won't wait for anything.
 
 ### toggleOfflineMode
 
@@ -724,6 +844,14 @@ Converts editor's block type.
 _Parameters_
 
 -   _name_ `string`: Block name.
+
+### trashAllComments
+
+Navigates to the comments listing screen and bulk-trashes any comments which exist.
+
+_Returns_
+
+-   `Promise`: Promise resolving once comments have been trashed.
 
 ### trashAllPosts
 
@@ -755,12 +883,24 @@ _Parameters_
 -   _adminPath_ `string`: String to be serialized as pathname.
 -   _query_ `string`: String to be serialized as query portion of URL.
 
+### visitSiteEditor
+
+Visits the Site Editor main page
+
+By default, it also skips the welcome guide. The option can be disabled if need be.
+
+_Related_
+
+-   disableSiteEditorWelcomeGuide
+
+_Parameters_
+
+-   _query_ `string`: String to be serialized as query portion of URL.
+-   _skipWelcomeGuide_ `[boolean]`: Whether to skip the welcome guide as part of the navigation.
+
 ### waitForWindowDimensions
 
-Function that waits until the page viewport has the required dimensions.
-It is being used to address a problem where after using setViewport the execution may continue,
-without the new dimensions being applied.
-<https://github.com/GoogleChrome/puppeteer/issues/1751>
+Function that waits until the page viewport has the required dimensions. It is being used to address a problem where after using setViewport the execution may continue, without the new dimensions being applied. <https://github.com/GoogleChrome/puppeteer/issues/1751>
 
 _Parameters_
 
@@ -771,13 +911,7 @@ _Parameters_
 
 Queries the WordPress data module.
 
-`page.evaluate` - used in the function - returns `undefined`
-when it encounters a non-serializable value.
-Since we store many different values in the data module,
-you can end up with an `undefined` result. Before using
-this function, make sure the data you are querying
-doesn't contain non-serializable values, for example,
-functions, DOM element handles, etc.
+`page.evaluate` - used in the function - returns `undefined` when it encounters a non-serializable value. Since we store many different values in the data module, you can end up with an `undefined` result. Before using this function, make sure the data you are querying doesn't contain non-serializable values, for example, functions, DOM element handles, etc.
 
 _Related_
 
@@ -787,7 +921,7 @@ _Related_
 _Parameters_
 
 -   _store_ `string`: Store to query e.g: core/editor, core/blocks...
--   _selector_ `string`: Selector to exectute e.g: getBlocks.
+-   _selector_ `string`: Selector to execute e.g: getBlocks.
 -   _parameters_ `...Object`: Parameters to pass to the selector.
 
 _Returns_
@@ -796,4 +930,10 @@ _Returns_
 
 <!-- END TOKEN(Autogenerated API docs) -->
 
-<br/><br/><p align="center"><img src="https://s.w.org/style/images/codeispoetry.png?1" alt="Code is Poetry." /></p>
+## Contributing to this package
+
+This is an individual package that's part of the Gutenberg project. The project is organized as a monorepo. It's made up of multiple self-contained software packages, each with a specific purpose. The packages in this monorepo are published to [npm](https://www.npmjs.com/) and used by [WordPress](https://make.wordpress.org/core/) as well as other software projects.
+
+To find out more about contributing to this package or Gutenberg as a whole, please read the project's main [contributor guide](https://github.com/WordPress/gutenberg/tree/HEAD/CONTRIBUTING.md).
+
+<br /><br /><p align="center"><img src="https://s.w.org/style/images/codeispoetry.png?1" alt="Code is Poetry." /></p>

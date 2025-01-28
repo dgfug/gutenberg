@@ -30,13 +30,11 @@ class BottomSheetStepperCell extends Component {
 
 		this.announceValue = this.announceValue.bind( this );
 		this.onDecrementValue = this.onDecrementValue.bind( this );
-		this.onDecrementValuePressIn = this.onDecrementValuePressIn.bind(
-			this
-		);
+		this.onDecrementValuePressIn =
+			this.onDecrementValuePressIn.bind( this );
 		this.onIncrementValue = this.onIncrementValue.bind( this );
-		this.onIncrementValuePressIn = this.onIncrementValuePressIn.bind(
-			this
-		);
+		this.onIncrementValuePressIn =
+			this.onIncrementValuePressIn.bind( this );
 		this.onPressOut = this.onPressOut.bind( this );
 
 		const { value, defaultValue, min } = props;
@@ -146,6 +144,7 @@ class BottomSheetStepperCell extends Component {
 			openUnitPicker,
 			decimalNum,
 			cellContainerStyle,
+			disabled,
 		} = this.props;
 		const { inputValue } = this.state;
 		const isMinValue = value === min;
@@ -160,7 +159,7 @@ class BottomSheetStepperCell extends Component {
 		};
 
 		const accessibilityLabel = sprintf(
-			/* translators: accessibility text. Inform about current value. %1$s: Control label %2$s: setting label (example: width), %3$s: Current value. %4$s: value measurement unit (example: pixels) */
+			/* translators: accessibility text. Inform about current value. 1: Control label. 2: setting label (example: width). 3: Current value. 4: value measurement unit (example: pixels) */
 			__( '%1$s. %2$s is %3$s %4$s.' ),
 			label,
 			settingLabel,
@@ -175,7 +174,7 @@ class BottomSheetStepperCell extends Component {
 
 		return (
 			<View
-				accessible={ true }
+				accessible
 				accessibilityRole="adjustable"
 				accessibilityLabel={ accessibilityLabel }
 				accessibilityHint={ getAccessibilityHint() }
@@ -215,8 +214,9 @@ class BottomSheetStepperCell extends Component {
 						icon={ icon }
 						label={ label }
 						labelStyle={ labelStyle }
-						leftAlign={ true }
+						leftAlign
 						separatorType={ separatorType }
+						disabled={ disabled }
 					>
 						<View style={ preview && containerStyle }>
 							{ preview }

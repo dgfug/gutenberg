@@ -7,171 +7,135 @@
 			{
 				"docs/getting-started/devenv/README.md": [
 					{
-						"docs/getting-started/devenv/docker-ubuntu.md": []
+						"docs/getting-started/devenv/nodejs-development-environment.md": []
+					},
+					{
+						"docs/getting-started/devenv/get-started-with-wp-env.md": []
+					},
+					{
+						"docs/getting-started/devenv/get-started-with-create-block.md": []
+					},
+					{
+						"docs/getting-started/devenv/get-started-with-wp-scripts.md": []
 					}
 				]
 			},
+			{ "docs/getting-started/quick-start-guide.md": [] },
+			{ "docs/getting-started/tutorial.md": [] },
 			{
-				"docs/getting-started/create-block/README.md": [
+				"docs/getting-started/fundamentals/README.md": [
 					{
-						"docs/getting-started/create-block/wp-plugin.md": []
+						"docs/getting-started/fundamentals/file-structure-of-a-block.md": []
 					},
 					{
-						"docs/getting-started/create-block/block-anatomy.md": []
+						"docs/getting-started/fundamentals/block-json.md": []
 					},
 					{
-						"docs/getting-started/create-block/attributes.md": []
+						"docs/getting-started/fundamentals/registration-of-a-block.md": []
 					},
 					{
-						"docs/getting-started/create-block/block-code.md": []
+						"docs/getting-started/fundamentals/block-wrapper.md": []
 					},
 					{
-						"docs/getting-started/create-block/author-experience.md": []
+						"docs/getting-started/fundamentals/block-in-the-editor.md": []
 					},
 					{
-						"docs/getting-started/create-block/finishing.md": []
+						"docs/getting-started/fundamentals/markup-representation-block.md": []
 					},
 					{
-						"docs/getting-started/create-block/submitting-to-block-directory.md": []
+						"docs/getting-started/fundamentals/static-dynamic-rendering.md": []
+					},
+					{
+						"docs/getting-started/fundamentals/javascript-in-the-block-editor.md": []
 					}
 				]
 			},
-			{ "docs/getting-started/full-site-editing.md": [] },
-			{ "docs/getting-started/outreach.md": [] }
+			{ "docs/getting-started/glossary.md": [] },
+			{ "docs/getting-started/faq.md": [] }
 		]
 	},
 	{
 		"docs/how-to-guides/README.md": [
-			{
-				"docs/how-to-guides/javascript/README.md": [
-					{
-						"docs/how-to-guides/javascript/plugins-background.md": []
-					},
-					{
-						"docs/how-to-guides/javascript/loading-javascript.md": []
-					},
-					{
-						"docs/how-to-guides/javascript/extending-the-block-editor.md": []
-					},
-					{ "docs/how-to-guides/native-mobile/osx-setup-guide.md": [] },
-					{ "docs/how-to-guides/javascript/troubleshooting.md": [] },
-					{
-						"docs/how-to-guides/javascript/versions-and-building.md": []
-					},
-					{ "docs/how-to-guides/javascript/scope-your-code.md": [] },
-					{ "docs/how-to-guides/javascript/js-build-setup.md": [] },
-					{ "docs/how-to-guides/javascript/esnext-js.md": [] }
-				]
-			},
-			{
-				"docs/how-to-guides/metabox/README.md": [
-					{ "docs/how-to-guides/metabox/meta-block-1-intro.md": [] },
-					{
-						"docs/how-to-guides/metabox/meta-block-2-register-meta.md": []
-					},
-					{ "docs/how-to-guides/metabox/meta-block-3-add.md": [] },
-					{
-						"docs/how-to-guides/metabox/meta-block-4-use-data.md": []
-					},
-					{
-						"docs/how-to-guides/metabox/meta-block-5-finishing.md": []
-					}
-				]
-			},
-			{ "docs/how-to-guides/notices/README.md": [] },
-			{
-				"docs/how-to-guides/sidebar-tutorial/plugin-sidebar-0.md": [
-					{
-						"docs/how-to-guides/sidebar-tutorial/plugin-sidebar-1-up-and-running.md": []
-					},
-					{
-						"docs/how-to-guides/sidebar-tutorial/plugin-sidebar-2-styles-and-controls.md": []
-					},
-					{
-						"docs/how-to-guides/sidebar-tutorial/plugin-sidebar-3-register-meta.md": []
-					},
-					{
-						"docs/how-to-guides/sidebar-tutorial/plugin-sidebar-4-initialize-input.md": []
-					},
-					{
-						"docs/how-to-guides/sidebar-tutorial/plugin-sidebar-5-update-meta.md": []
-					}
-				]
-			},
+			{ "docs/how-to-guides/accessibility.md": [] },
 			{
 				"docs/how-to-guides/block-tutorial/README.md": [
 					{
-						"docs/how-to-guides/block-tutorial/writing-your-first-block-type.md": []
-					},
-					{
 						"docs/how-to-guides/block-tutorial/applying-styles-with-stylesheets.md": []
-					},
-					{
-						"docs/how-to-guides/block-tutorial/introducing-attributes-and-editable-fields.md": []
-					},
-					{
-						"docs/how-to-guides/block-tutorial/block-controls-toolbar-and-sidebar.md": []
 					},
 					{
 						"docs/how-to-guides/block-tutorial/creating-dynamic-blocks.md": []
 					},
 					{
-						"docs/how-to-guides/block-tutorial/generate-blocks-with-wp-cli.md": []
-					},
-					{
 						"docs/how-to-guides/block-tutorial/nested-blocks-inner-blocks.md": []
-					}
-				]
-			},
-			{
-				"docs/how-to-guides/themes/README.md": [
-					{ "docs/how-to-guides/themes/block-theme-overview.md": [] },
-					{ "docs/how-to-guides/themes/create-block-theme.md": [] },
-					{ "docs/how-to-guides/themes/theme-json.md": [] },
-					{ "docs/how-to-guides/themes/theme-support.md": [] }
-				]
-			},
-			{ "docs/how-to-guides/feature-flags.md": [] },
-			{
-				"docs/how-to-guides/backward-compatibility/README.md": [
-					{
-						"docs/how-to-guides/backward-compatibility/deprecations.md": []
 					},
 					{
-						"docs/how-to-guides/backward-compatibility/meta-box.md": []
+						"docs/how-to-guides/block-tutorial/extending-the-query-loop-block.md": []
 					}
-				]
-			},
-			{
-				"docs/how-to-guides/format-api/README.md": [
-					{
-						"docs/how-to-guides/format-api/1-register-format.md": []
-					},
-					{ "docs/how-to-guides/format-api/2-toolbar-button.md": [] },
-					{ "docs/how-to-guides/format-api/3-apply-format.md": [] }
 				]
 			},
 			{
 				"docs/how-to-guides/platform/README.md": [
 					{
-						"docs/how-to-guides/platform/custom-block-editor/README.md": [
-							{
-								"docs/how-to-guides/platform/custom-block-editor/tutorial.md": []
-							}
-						]
+						"docs/how-to-guides/platform/custom-block-editor.md": []
 					}
 				]
 			},
 			{
-				"docs/how-to-guides/designers/README.md": [
-					{ "docs/how-to-guides/designers/block-design.md": [] },
-					{ "docs/how-to-guides/designers/user-interface.md": [] },
-					{ "docs/how-to-guides/designers/design-resources.md": [] },
-					{ "docs/how-to-guides/designers/animation.md": [] }
+				"docs/how-to-guides/data-basics/README.md": [
+					{
+						"docs/how-to-guides/data-basics/1-data-basics-setup.md": []
+					},
+					{
+						"docs/how-to-guides/data-basics/2-building-a-list-of-pages.md": []
+					},
+					{
+						"docs/how-to-guides/data-basics/3-building-an-edit-form.md": []
+					},
+					{
+						"docs/how-to-guides/data-basics/4-building-a-create-page-form.md": []
+					},
+					{
+						"docs/how-to-guides/data-basics/5-adding-a-delete-button.md": []
+					}
 				]
 			},
-			{ "docs/how-to-guides/accessibility.md": [] },
+			{
+				"docs/how-to-guides/curating-the-editor-experience/README.md": [
+					{
+						"docs/how-to-guides/curating-the-editor-experience/block-locking.md": []
+					},
+					{
+						"docs/how-to-guides/curating-the-editor-experience/patterns.md": []
+					},
+					{
+						"docs/how-to-guides/curating-the-editor-experience/theme-json.md": []
+					},
+					{
+						"docs/how-to-guides/curating-the-editor-experience/filters-and-hooks.md": []
+					},
+					{
+						"docs/how-to-guides/curating-the-editor-experience/disable-editor-functionality.md": []
+					}
+				]
+			},
+			{ "docs/how-to-guides/enqueueing-assets-in-the-editor.md": [] },
+			{ "docs/how-to-guides/feature-flags.md": [] },
+			{ "docs/how-to-guides/format-api.md": [] },
 			{ "docs/how-to-guides/internationalization.md": [] },
+			{
+				"docs/how-to-guides/metabox.md": []
+			},
+			{ "docs/how-to-guides/notices/README.md": [] },
+			{ "docs/how-to-guides/plugin-sidebar-0.md": [] },
+			{ "docs/how-to-guides/propagating-updates.md": [] },
+			{
+				"docs/how-to-guides/themes/README.md": [
+					{
+						"docs/how-to-guides/themes/global-settings-and-styles.md": []
+					},
+					{ "docs/how-to-guides/themes/theme-support.md": [] }
+				]
+			},
 			{ "docs/how-to-guides/thunks.md": [] },
 			{
 				"docs/how-to-guides/widgets/README.md": [
@@ -195,6 +159,9 @@
 					{
 						"docs/reference-guides/block-api/block-attributes.md": []
 					},
+					{
+						"docs/reference-guides/block-api/block-bindings.md": []
+					},
 					{ "docs/reference-guides/block-api/block-context.md": [] },
 					{
 						"docs/reference-guides/block-api/block-deprecation.md": []
@@ -206,6 +173,9 @@
 					{ "docs/reference-guides/block-api/block-patterns.md": [] },
 					{
 						"docs/reference-guides/block-api/block-registration.md": []
+					},
+					{
+						"docs/reference-guides/block-api/block-selectors.md": []
 					},
 					{ "docs/reference-guides/block-api/block-styles.md": [] },
 					{ "docs/reference-guides/block-api/block-supports.md": [] },
@@ -220,6 +190,7 @@
 					}
 				]
 			},
+			{ "docs/reference-guides/core-blocks.md": [] },
 			{
 				"docs/reference-guides/filters/README.md": [
 					{ "docs/reference-guides/filters/block-filters.md": [] },
@@ -228,6 +199,41 @@
 					{ "docs/reference-guides/filters/parser-filters.md": [] },
 					{
 						"docs/reference-guides/filters/autocomplete-filters.md": []
+					},
+					{
+						"docs/reference-guides/filters/global-styles-filters.md": []
+					}
+				]
+			},
+			{
+				"docs/reference-guides/interactivity-api/README.md": [
+					{
+						"docs/reference-guides/interactivity-api/core-concepts/README.md": [
+							{
+								"docs/reference-guides/interactivity-api/core-concepts/the-reactive-and-declarative-mindset.md": []
+							},
+							{
+								"docs/reference-guides/interactivity-api/core-concepts/undestanding-global-state-local-context-and-derived-state.md": []
+							},
+							{
+								"docs/reference-guides/interactivity-api/core-concepts/server-side-rendering.md": []
+							},
+							{
+								"docs/reference-guides/interactivity-api/core-concepts/using-typescript.md": []
+							}
+						]
+					},
+					{
+						"docs/reference-guides/interactivity-api/iapi-quick-start-guide.md": []
+					},
+					{
+						"docs/reference-guides/interactivity-api/api-reference.md": []
+					},
+					{
+						"docs/reference-guides/interactivity-api/iapi-about.md": []
+					},
+					{
+						"docs/reference-guides/interactivity-api/iapi-faq.md": []
 					}
 				]
 			},
@@ -261,6 +267,25 @@
 				]
 			},
 			{ "docs/reference-guides/richtext.md": [] },
+			{
+				"docs/reference-guides/theme-json-reference/README.md": [
+					{
+						"docs/reference-guides/theme-json-reference/theme-json-living.md": []
+					},
+					{
+						"docs/reference-guides/theme-json-reference/theme-json-v1.md": []
+					},
+					{
+						"docs/reference-guides/theme-json-reference/theme-json-v2.md": []
+					},
+					{
+						"docs/reference-guides/theme-json-reference/theme-json-migrations.md": []
+					},
+					{
+						"docs/reference-guides/theme-json-reference/styles-versions.md": []
+					}
+				]
+			},
 			{ "packages/components/README.md": "{{components}}" },
 			{ "docs/reference-guides/packages.md": "{{packages}}" },
 			{
@@ -269,14 +294,37 @@
 					{
 						"docs/reference-guides/data/data-core-annotations.md": []
 					},
-					{ "docs/reference-guides/data/data-core-blocks.md": [] },
+					{
+						"docs/reference-guides/data/data-core-block-directory.md": []
+					},
 					{
 						"docs/reference-guides/data/data-core-block-editor.md": []
 					},
-					{ "docs/reference-guides/data/data-core-editor.md": [] },
+					{ "docs/reference-guides/data/data-core-blocks.md": [] },
+					{
+						"docs/reference-guides/data/data-core-commands.md": []
+					},
+					{
+						"docs/reference-guides/data/data-core-customize-widgets.md": []
+					},
 					{ "docs/reference-guides/data/data-core-edit-post.md": [] },
+					{ "docs/reference-guides/data/data-core-edit-site.md": [] },
+					{
+						"docs/reference-guides/data/data-core-edit-widgets.md": []
+					},
+					{ "docs/reference-guides/data/data-core-editor.md": [] },
+					{
+						"docs/reference-guides/data/data-core-keyboard-shortcuts.md": []
+					},
 					{ "docs/reference-guides/data/data-core-notices.md": [] },
 					{ "docs/reference-guides/data/data-core-nux.md": [] },
+					{
+						"docs/reference-guides/data/data-core-preferences.md": []
+					},
+					{
+						"docs/reference-guides/data/data-core-reusable-blocks.md": []
+					},
+					{ "docs/reference-guides/data/data-core-rich-text.md": [] },
 					{ "docs/reference-guides/data/data-core-viewport.md": [] }
 				]
 			}
@@ -288,6 +336,7 @@
 				"docs/explanations/architecture/README.md": [
 					{ "docs/explanations/architecture/key-concepts.md": [] },
 					{ "docs/explanations/architecture/data-flow.md": [] },
+					{ "docs/explanations/architecture/entities.md": [] },
 					{ "docs/explanations/architecture/modularity.md": [] },
 					{ "docs/explanations/architecture/performance.md": [] },
 					{
@@ -295,11 +344,19 @@
 					},
 					{
 						"docs/explanations/architecture/full-site-editing-templates.md": []
+					},
+					{ "docs/explanations/architecture/styles.md": [] }
+				]
+			},
+			{
+				"docs/explanations/user-interface/README.md": [
+					{ "docs/explanations/user-interface/block-design.md": [] },
+					{ "docs/explanations/user-interface/animation.md": [] },
+					{
+						"docs/explanations/user-interface/design-resources.md": []
 					}
 				]
 			},
-			{ "docs/explanations/faq.md": [] },
-			{ "docs/explanations/glossary.md": [] },
 			{ "docs/explanations/history.md": [] }
 		]
 	},
@@ -312,24 +369,55 @@
 					},
 					{ "docs/contributors/code/git-workflow.md": [] },
 					{ "docs/contributors/code/coding-guidelines.md": [] },
-					{ "docs/contributors/code/testing-overview.md": [] },
-					{ "docs/contributors/code/grammar.md": [] },
+					{
+						"docs/contributors/code/testing-overview.md": [
+							{
+								"docs/contributors/code/e2e/README.md": [
+									{
+										"docs/contributors/code/e2e/migration.md": []
+									},
+									{
+										"docs/contributors/code/e2e/overusing-snapshots.md": []
+									}
+								]
+							}
+						]
+					},
 					{ "docs/contributors/code/scripts.md": [] },
 					{ "docs/contributors/code/managing-packages.md": [] },
-					{ "docs/contributors/code/release.md": [] },
-					{ "docs/contributors/code/native-mobile.md": [] },
 					{
-						"docs/contributors/code/native-mobile-integration-test-guide.md": []
+						"docs/contributors/code/release.md": [
+							{
+								"docs/contributors/code/auto-cherry-picking.md": []
+							}
+						]
 					},
 					{
-						"docs/contributors/code/getting-started-native-mobile.md": []
+						"docs/contributors/code/react-native/README.md": [
+							{
+								"docs/contributors/code/react-native/getting-started-react-native.md": []
+							},
+							{
+								"docs/contributors/code/react-native/osx-setup-guide.md": []
+							},
+							{
+								"docs/contributors/code/react-native/integration-test-guide.md": []
+							},
+							{
+								"docs/contributors/code/react-native/internationalization-guide.md": []
+							}
+						]
+					},
+					{ "docs/contributors/code/backward-compatibility.md": [] },
+					{ "docs/contributors/code/deprecations.md": [] },
+					{
+						"docs/contributors/code/how-to-get-your-pull-request-reviewed.md": []
 					}
 				]
 			},
 			{
 				"docs/contributors/design/README.md": [
-					{ "docs/contributors/design/the-block.md": [] },
-					{ "docs/contributors/design/reference.md": [] }
+					{ "docs/contributors/design/the-block.md": [] }
 				]
 			},
 			{
@@ -342,8 +430,7 @@
 			{ "docs/contributors/accessibility-testing.md": [] },
 			{ "docs/contributors/repository-management.md": [] },
 			{ "docs/contributors/folder-structure.md": [] },
-			{ "docs/contributors/versions-in-wordpress.md": [] },
-			{ "docs/contributors/roadmap.md": [] }
+			{ "docs/contributors/versions-in-wordpress.md": [] }
 		]
 	}
 ]

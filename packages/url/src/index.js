@@ -1,5 +1,6 @@
 export { isURL } from './is-url';
 export { isEmail } from './is-email';
+export { isPhoneNumber } from './is-phone-number';
 export { getProtocol } from './get-protocol';
 export { isValidProtocol } from './is-valid-protocol';
 export { getAuthority } from './get-authority';
@@ -24,3 +25,4 @@ export { filterURLForDisplay } from './filter-url-for-display';
 export { cleanForSlug } from './clean-for-slug';
 export { getFilename } from './get-filename';
 export { normalizePath } from './normalize-path';
+export { prependHTTPS } from './prepend-https';

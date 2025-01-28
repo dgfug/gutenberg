@@ -1,8 +1,6 @@
 /**
  * External dependencies
  */
-import { keyBy, omit } from 'lodash';
-
 import deepFreeze from 'deep-freeze';
 
 /**
@@ -19,12 +17,23 @@ import {
 	getActiveBlockVariation,
 } from '../selectors';
 
+/**
+ * WordPress dependencies
+ */
+import { RichTextData } from '@wordpress/rich-text';
+
+const keyBlocksByName = ( blocks ) =>
+	blocks.reduce(
+		( result, block ) => ( { ...result, [ block.name ]: block } ),
+		{}
+	);
+
 describe( 'selectors', () => {
 	describe( 'getBlockSupport', () => {
 		const blockName = 'block/name';
 		const getState = ( blocks ) => {
 			return deepFreeze( {
-				blockTypes: keyBy( blocks, 'name' ),
+				blockTypes: keyBlocksByName( blocks ),
 			} );
 		};
 
@@ -82,26 +91,28 @@ describe( 'selectors', () => {
 
 	describe( 'getChildBlockNames', () => {
 		it( 'should return an empty array if state is empty', () => {
-			const state = {};
+			const state = {
+				blockTypes: {},
+			};
 
 			expect( getChildBlockNames( state, 'parent1' ) ).toHaveLength( 0 );
 		} );
 
 		it( 'should return an empty array if no children exist', () => {
 			const state = {
-				blockTypes: [
-					{
+				blockTypes: {
+					child1: {
 						name: 'child1',
 						parent: [ 'parent1' ],
 					},
-					{
+					child2: {
 						name: 'child2',
 						parent: [ 'parent2' ],
 					},
-					{
+					parent3: {
 						name: 'parent3',
 					},
-				],
+				},
 			};
 
 			expect( getChildBlockNames( state, 'parent3' ) ).toHaveLength( 0 );
@@ -109,15 +120,15 @@ describe( 'selectors', () => {
 
 		it( 'should return an empty array if the parent block is not found', () => {
 			const state = {
-				blockTypes: [
-					{
+				blockTypes: {
+					child1: {
 						name: 'child1',
 						parent: [ 'parent1' ],
 					},
-					{
+					parent1: {
 						name: 'parent1',
 					},
-				],
+				},
 			};
 
 			expect( getChildBlockNames( state, 'parent3' ) ).toHaveLength( 0 );
@@ -125,29 +136,29 @@ describe( 'selectors', () => {
 
 		it( 'should return an array with the child block names', () => {
 			const state = {
-				blockTypes: [
-					{
+				blockTypes: {
+					child1: {
 						name: 'child1',
 						parent: [ 'parent1' ],
 					},
-					{
+					child2: {
 						name: 'child2',
 						parent: [ 'parent2' ],
 					},
-					{
+					child3: {
 						name: 'child3',
 						parent: [ 'parent1' ],
 					},
-					{
+					child4: {
 						name: 'child4',
 					},
-					{
+					parent1: {
 						name: 'parent1',
 					},
-					{
+					parent2: {
 						name: 'parent2',
 					},
-				],
+				},
 			};
 
 			expect( getChildBlockNames( state, 'parent1' ) ).toEqual( [
@@ -158,25 +169,25 @@ describe( 'selectors', () => {
 
 		it( 'should return an array with the child block names even if only one child exists', () => {
 			const state = {
-				blockTypes: [
-					{
+				blockTypes: {
+					child1: {
 						name: 'child1',
 						parent: [ 'parent1' ],
 					},
-					{
+					child2: {
 						name: 'child2',
 						parent: [ 'parent2' ],
 					},
-					{
+					child4: {
 						name: 'child4',
 					},
-					{
+					parent1: {
 						name: 'parent1',
 					},
-					{
+					parent2: {
 						name: 'parent2',
 					},
-				],
+				},
 			};
 
 			expect( getChildBlockNames( state, 'parent1' ) ).toEqual( [
@@ -186,29 +197,29 @@ describe( 'selectors', () => {
 
 		it( 'should return an array with the child block names even if children have multiple parents', () => {
 			const state = {
-				blockTypes: [
-					{
+				blockTypes: {
+					child1: {
 						name: 'child1',
 						parent: [ 'parent1' ],
 					},
-					{
+					child2: {
 						name: 'child2',
 						parent: [ 'parent1', 'parent2' ],
 					},
-					{
+					child3: {
 						name: 'child3',
 						parent: [ 'parent1' ],
 					},
-					{
+					child4: {
 						name: 'child4',
 					},
-					{
+					parent1: {
 						name: 'parent1',
 					},
-					{
+					parent2: {
 						name: 'parent2',
 					},
-				],
+				},
 			};
 
 			expect( getChildBlockNames( state, 'parent1' ) ).toEqual( [
@@ -285,6 +296,7 @@ describe( 'selectors', () => {
 					testAttribute: {},
 					firstTestAttribute: {},
 					secondTestAttribute: {},
+					thirdTestAttribute: {},
 				},
 			};
 			const FIRST_VARIATION_TEST_ATTRIBUTE_VALUE = 1;
@@ -334,7 +346,8 @@ describe( 'selectors', () => {
 				deepFreeze( {
 					...createBlockVariationsState( variations ),
 					blockTypes: {
-						[ blockTypeWithTestAttributes.name ]: blockTypeWithTestAttributes,
+						[ blockTypeWithTestAttributes.name ]:
+							blockTypeWithTestAttributes,
 					},
 				} );
 			const stateFunction = createBlockVariationsStateWithTestBlockType( [
@@ -403,6 +416,161 @@ describe( 'selectors', () => {
 					expect( result ).toEqual( variation );
 				} );
 			} );
+			it( 'should support nested attribute paths in the isActive array', () => {
+				const variations = [
+					{
+						name: 'variation-1',
+						attributes: {
+							firstTestAttribute: {
+								nestedProperty: 1,
+								otherNestedProperty: 5555,
+							},
+						},
+						isActive: [ 'firstTestAttribute.nestedProperty' ],
+					},
+					{
+						name: 'variation-2',
+						attributes: {
+							firstTestAttribute: {
+								nestedProperty: 2,
+								otherNestedProperty: 5555,
+							},
+						},
+						isActive: [ 'firstTestAttribute.nestedProperty' ],
+					},
+				];
+				const state =
+					createBlockVariationsStateWithTestBlockType( variations );
+
+				expect(
+					getActiveBlockVariation( state, blockName, {
+						firstTestAttribute: {
+							nestedProperty: 1,
+						},
+					} )
+				).toEqual( variations[ 0 ] );
+				expect(
+					getActiveBlockVariation( state, blockName, {
+						firstTestAttribute: {
+							nestedProperty: 2,
+						},
+					} )
+				).toEqual( variations[ 1 ] );
+			} );
+			it( 'should support RichText attributes in the isActive array', () => {
+				const variations = [
+					{
+						name: 'variation-1',
+						attributes: {
+							firstTestAttribute:
+								'This is a <strong>RichText</strong> attribute.',
+						},
+						isActive: [ 'firstTestAttribute' ],
+					},
+					{
+						name: 'variation-2',
+						attributes: {
+							firstTestAttribute:
+								'This is a <em>RichText</em> attribute.',
+						},
+						isActive: [ 'firstTestAttribute' ],
+					},
+				];
+				const state =
+					createBlockVariationsStateWithTestBlockType( variations );
+
+				expect(
+					getActiveBlockVariation( state, blockName, {
+						firstTestAttribute: RichTextData.fromHTMLString(
+							'This is a <strong>RichText</strong> attribute.'
+						),
+					} )
+				).toEqual( variations[ 0 ] );
+				expect(
+					getActiveBlockVariation( state, blockName, {
+						firstTestAttribute: RichTextData.fromHTMLString(
+							'This is a <em>RichText</em> attribute.'
+						),
+					} )
+				).toEqual( variations[ 1 ] );
+			} );
+			it( 'should compare object attributes in the isActive array based on given properties', () => {
+				const variations = [
+					{
+						name: 'variation-1',
+						attributes: {
+							firstTestAttribute: {
+								nestedProperty: 1,
+								secondNestedProperty: 10,
+							},
+							secondTestAttribute: {
+								nestedProperty: {
+									firstDeeplyNestedProperty: 'a1',
+									secondDeeplyNestedProperty: 'a2',
+								},
+							},
+						},
+						isActive: [
+							'firstTestAttribute',
+							'secondTestAttribute.nestedProperty',
+						],
+					},
+					{
+						name: 'variation-2',
+						attributes: {
+							firstTestAttribute: {
+								nestedProperty: 2,
+								secondNestedProperty: 20,
+							},
+							secondTestAttribute: {
+								nestedProperty: {
+									firstDeeplyNestedProperty: 'b1',
+									secondDeeplyNestedProperty: 'b2',
+								},
+							},
+						},
+						isActive: [
+							'firstTestAttribute',
+							'secondTestAttribute.nestedProperty',
+						],
+					},
+				];
+				const state =
+					createBlockVariationsStateWithTestBlockType( variations );
+
+				expect(
+					getActiveBlockVariation( state, blockName, {
+						firstTestAttribute: {
+							nestedProperty: 1,
+							secondNestedProperty: 10,
+							otherNestedProperty: 5555,
+						},
+						secondTestAttribute: {
+							nestedProperty: {
+								firstDeeplyNestedProperty: 'a1',
+								secondDeeplyNestedProperty: 'a2',
+								otherDeeplyNestedProperty: 'ffff',
+							},
+						},
+					} )
+				).toEqual( variations[ 0 ] );
+				expect(
+					getActiveBlockVariation( state, blockName, {
+						firstTestAttribute: {
+							nestedProperty: 2,
+							secondNestedProperty: 20,
+							otherNestedProperty: 5555,
+						},
+						secondTestAttribute: {
+							nestedProperty: {
+								firstDeeplyNestedProperty: 'b1',
+								secondDeeplyNestedProperty: 'b2',
+								otherDeeplyNestedProperty: 'ffff',
+							},
+						},
+					} )
+				).toEqual( variations[ 1 ] );
+			} );
 			it( 'should return the active variation based on the given isActive array (multiple values)', () => {
 				const variations = [
 					{
@@ -440,9 +608,8 @@ describe( 'selectors', () => {
 					},
 				];
 
-				const state = createBlockVariationsStateWithTestBlockType(
-					variations
-				);
+				const state =
+					createBlockVariationsStateWithTestBlockType( variations );
 
 				expect(
 					getActiveBlockVariation( state, blockName, {
@@ -460,6 +627,136 @@ describe( 'selectors', () => {
 					getActiveBlockVariation( state, blockName, {
 						firstTestAttribute: 1,
 						secondTestAttribute: 20,
+					} )
+				).toEqual( variations[ 2 ] );
+			} );
+			it( 'should return the active variation using the match with the highest specificity for the given isActive array (multiple values)', () => {
+				const variations = [
+					{
+						name: 'variation-1',
+						attributes: {
+							firstTestAttribute: 1,
+							secondTestAttribute: 2,
+						},
+						isActive: [
+							'firstTestAttribute',
+							'secondTestAttribute',
+						],
+					},
+					{
+						name: 'variation-2',
+						attributes: {
+							firstTestAttribute: 1,
+							secondTestAttribute: 2,
+							thirdTestAttribute: 3,
+						},
+						isActive: [
+							'firstTestAttribute',
+							'secondTestAttribute',
+							'thirdTestAttribute',
+						],
+					},
+					{
+						name: 'variation-3',
+						attributes: {
+							firstTestAttribute: 1,
+							thirdTestAttribute: 3,
+						},
+						isActive: [
+							'firstTestAttribute',
+							'thirdTestAttribute',
+						],
+					},
+				];
+
+				const state =
+					createBlockVariationsStateWithTestBlockType( variations );
+
+				expect(
+					getActiveBlockVariation( state, blockName, {
+						firstTestAttribute: 1,
+						secondTestAttribute: 2,
+					} )
+				).toEqual( variations[ 0 ] );
+				// All variations match the following attributes. Since all matches have an array for their isActive
+				// fields, we can compare the specificity of each match and return the most specific match.
+				expect(
+					getActiveBlockVariation( state, blockName, {
+						firstTestAttribute: 1,
+						secondTestAttribute: 2,
+						thirdTestAttribute: 3,
+					} )
+				).toEqual( variations[ 1 ] );
+				expect(
+					getActiveBlockVariation( state, blockName, {
+						firstTestAttribute: 1,
+						thirdTestAttribute: 3,
+					} )
+				).toEqual( variations[ 2 ] );
+			} );
+			it( 'should return the active variation using the first match given the isActive array (multiple values) and function', () => {
+				const variations = [
+					{
+						name: 'variation-1',
+						attributes: {
+							firstTestAttribute: 1,
+							secondTestAttribute: 2,
+						},
+						isActive: [
+							'firstTestAttribute',
+							'secondTestAttribute',
+						],
+					},
+					{
+						name: 'variation-2',
+						attributes: {
+							firstTestAttribute: 1,
+							secondTestAttribute: 2,
+							thirdTestAttribute: 3,
+						},
+						isActive: [
+							'firstTestAttribute',
+							'secondTestAttribute',
+							'thirdTestAttribute',
+						],
+					},
+					{
+						name: 'variation-3',
+						attributes: {
+							firstTestAttribute: 1,
+							thirdTestAttribute: 3,
+						},
+						isActive: ( blockAttributes, variationAttributes ) =>
+							blockAttributes.firstTestAttribute ===
+								variationAttributes.firstTestAttribute &&
+							blockAttributes.thirdTestAttribute ===
+								variationAttributes.thirdTestAttribute,
+					},
+				];
+
+				const state =
+					createBlockVariationsStateWithTestBlockType( variations );
+
+				expect(
+					getActiveBlockVariation( state, blockName, {
+						firstTestAttribute: 1,
+						secondTestAttribute: 2,
+					} )
+				).toEqual( variations[ 0 ] );
+				// All variations match the following attributes. However, since the third variation has a function
+				// for its isActive field, we cannot compare the specificity of each match, so instead we return the
+				// best match we've found.
+				expect(
+					getActiveBlockVariation( state, blockName, {
+						firstTestAttribute: 1,
+						secondTestAttribute: 2,
+						thirdTestAttribute: 3,
+					} )
+				).toEqual( variations[ 1 ] );
+				expect(
+					getActiveBlockVariation( state, blockName, {
+						firstTestAttribute: 1,
+						thirdTestAttribute: 3,
 					} )
 				).toEqual( variations[ 2 ] );
 			} );
@@ -493,9 +790,8 @@ describe( 'selectors', () => {
 					},
 				];
 
-				const state = createBlockVariationsStateWithTestBlockType(
-					variations
-				);
+				const state =
+					createBlockVariationsStateWithTestBlockType( variations );
 
 				expect(
 					getActiveBlockVariation( state, blockName, {
@@ -582,10 +878,29 @@ describe( 'selectors', () => {
 
 	describe( 'isMatchingSearchTerm', () => {
 		const name = 'core/paragraph';
-		const blockType = {
+		const category = 'text';
+		const description = 'writing flow';
+
+		const blockTypeBase = {
 			title: 'Paragraph',
-			category: 'text',
 			keywords: [ 'body' ],
+		};
+		const blockType = {
+			...blockTypeBase,
+			category,
+			description,
+		};
+		const blockTypeWithoutCategory = {
+			...blockTypeBase,
+			description,
+		};
+		const blockTypeWithoutDescription = {
+			...blockTypeBase,
+			category,
+		};
+		const blockTypeWithNonStringDescription = {
+			...blockTypeBase,
+			description: <div>writing flow</div>,
 		};
 
 		const state = {
@@ -597,7 +912,12 @@ describe( 'selectors', () => {
 		describe.each( [
 			[ 'name', name ],
 			[ 'block type', blockType ],
-			[ 'block type without category', omit( blockType, 'category' ) ],
+			[ 'block type without category', blockTypeWithoutCategory ],
+			[ 'block type without description', blockTypeWithoutDescription ],
+			[
+				'block type with non-string description',
+				blockTypeWithNonStringDescription,
+			],
 		] )( 'by %s', ( label, nameOrType ) => {
 			it( 'should return false if not match', () => {
 				const result = isMatchingSearchTerm(
@@ -665,6 +985,21 @@ describe( 'selectors', () => {
 						state,
 						nameOrType,
 						'TEXT'
+					);
+
+					expect( result ).toBe( true );
+				} );
+			}
+
+			if (
+				nameOrType.description &&
+				typeof nameOrType.description === 'string'
+			) {
+				it( 'should return true if match using the description', () => {
+					const result = isMatchingSearchTerm(
+						state,
+						nameOrType,
+						'flow'
 					);
 
 					expect( result ).toBe( true );

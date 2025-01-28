@@ -1,21 +1,23 @@
 /**
  * WordPress dependencies
  */
-import { InspectorControls, useSetting } from '@wordpress/block-editor';
 import {
 	BottomSheet,
 	ColorSettings,
 	FocalPointSettingsPanel,
-	ImageLinkDestinationsScreen,
 	LinkPickerScreen,
 } from '@wordpress/components';
-import { compose } from '@wordpress/compose';
-import { withDispatch, withSelect } from '@wordpress/data';
+import { useDispatch, useSelect } from '@wordpress/data';
+
 /**
  * Internal dependencies
  */
 import styles from './container.native.scss';
-import { store as blockEditorStore } from '../../store';
+import InspectorControls from '../inspector-controls';
+import ImageLinkDestinationsScreen from '../image-link-destinations';
+import useMultipleOriginColorsAndGradients from '../colors-gradients/use-multiple-origin-colors-and-gradients';
+import { useMobileGlobalStylesColors } from '../global-styles/use-global-styles-context';
+import AdvancedControls from '../inspector-controls-tabs/advanced-controls-panel';
 
 export const blockSettingsScreens = {
 	settings: 'Settings',
@@ -25,16 +27,13 @@ export const blockSettingsScreens = {
 	imageLinkDestinations: 'imageLinkDestinations',
 };
 
-function BottomSheetSettings( {
-	editorSidebarOpened,
-	closeGeneralSidebar,
-	settings,
-	...props
-} ) {
-	const colorSettings = {
-		colors: useSetting( 'color.palette' ) || settings.colors,
-		gradients: useSetting( 'color.gradients' ) || settings.gradients,
-	};
+export default function BottomSheetSettings( props ) {
+	const colorSettings = useMultipleOriginColorsAndGradients();
+	colorSettings.allAvailableColors = useMobileGlobalStylesColors();
+	const { closeGeneralSidebar } = useDispatch( 'core/edit-post' );
+	const editorSidebarOpened = useSelect( ( select ) =>
+		select( 'core/edit-post' ).isEditorSidebarOpened()
+	);
 
 	return (
 		<BottomSheet
@@ -43,13 +42,17 @@ function BottomSheetSettings( {
 			hideHeader
 			contentStyle={ styles.content }
 			hasNavigation
+			testID="block-settings-modal"
 			{ ...props }
 		>
 			<BottomSheet.NavigationContainer animate main>
 				<BottomSheet.NavigationScreen
 					name={ blockSettingsScreens.settings }
 				>
-					<InspectorControls.Slot />
+					<>
+						<InspectorControls.Slot />
+						<AdvancedControls />
+					</>
 				</BottomSheet.NavigationScreen>
 				<BottomSheet.NavigationScreen
 					name={ BottomSheet.SubSheet.screenName }
@@ -86,21 +89,3 @@ function BottomSheetSettings( {
 		</BottomSheet>
 	);
 }
-
-export default compose( [
-	withSelect( ( select ) => {
-		const { isEditorSidebarOpened } = select( 'core/edit-post' );
-		const { getSettings } = select( blockEditorStore );
-		return {
-			settings: getSettings(),
-			editorSidebarOpened: isEditorSidebarOpened(),
-		};
-	} ),
-	withDispatch( ( dispatch ) => {
-		const { closeGeneralSidebar } = dispatch( 'core/edit-post' );
-
-		return {
-			closeGeneralSidebar,
-		};
-	} ),
-] )( BottomSheetSettings );

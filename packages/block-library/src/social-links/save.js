@@ -1,7 +1,7 @@
 /**
  * External dependencies
  */
-import classNames from 'classnames';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
@@ -10,10 +10,16 @@ import { useInnerBlocksProps, useBlockProps } from '@wordpress/block-editor';
 
 export default function save( props ) {
 	const {
-		attributes: { iconBackgroundColorValue, iconColorValue, size },
+		attributes: {
+			iconBackgroundColorValue,
+			iconColorValue,
+			showLabels,
+			size,
+		},
 	} = props;
 
-	const className = classNames( size, {
+	const className = clsx( size, {
+		'has-visible-labels': showLabels,
 		'has-icon-color': iconColorValue,
 		'has-icon-background-color': iconBackgroundColorValue,
 	} );

@@ -1,8 +1,7 @@
 /**
  * External dependencies
  */
-import { forEach } from 'lodash';
-import classnames from 'classnames';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
@@ -14,10 +13,23 @@ import {
 	RichText,
 	useBlockProps,
 } from '@wordpress/block-editor';
-import { PanelBody, SelectControl, ToggleControl } from '@wordpress/components';
+import {
+	ComboboxControl,
+	PanelBody,
+	SelectControl,
+	ToggleControl,
+	__experimentalVStack as VStack,
+} from '@wordpress/components';
 import { useSelect, useDispatch } from '@wordpress/data';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { store as coreStore } from '@wordpress/core-data';
+
+const minimumUsersForCombobox = 25;
+
+const AUTHORS_QUERY = {
+	who: 'authors',
+	per_page: 100,
+};
 
 function PostAuthorEdit( {
 	isSelected,
@@ -25,12 +37,11 @@ function PostAuthorEdit( {
 	attributes,
 	setAttributes,
 } ) {
-	const isDescendentOfQueryLoop = !! queryId;
-	const { authorId, authorDetails, authors } = useSelect(
+	const isDescendentOfQueryLoop = Number.isFinite( queryId );
+	const { authorId, authorDetails, authors, supportsAuthor } = useSelect(
 		( select ) => {
-			const { getEditedEntityRecord, getUser, getUsers } = select(
-				coreStore
-			);
+			const { getEditedEntityRecord, getUser, getUsers, getPostType } =
+				select( coreStore );
 			const _authorId = getEditedEntityRecord(
 				'postType',
 				postType,
@@ -40,7 +51,9 @@ function PostAuthorEdit( {
 			return {
 				authorId: _authorId,
 				authorDetails: _authorId ? getUser( _authorId ) : null,
-				authors: getUsers( { who: 'authors' } ),
+				authors: getUsers( AUTHORS_QUERY ),
+				supportsAuthor:
+					getPostType( postType )?.supports?.author ?? false,
 			};
 		},
 		[ postType, postId ]
@@ -48,11 +61,12 @@ function PostAuthorEdit( {
 
 	const { editEntityRecord } = useDispatch( coreStore );
 
-	const { textAlign, showAvatar, showBio, byline } = attributes;
-
+	const { textAlign, showAvatar, showBio, byline, isLink, linkTarget } =
+		attributes;
 	const avatarSizes = [];
-	if ( authorDetails ) {
-		forEach( authorDetails.avatar_urls, ( url, size ) => {
+	const authorName = authorDetails?.name || __( 'Post Author' );
+	if ( authorDetails?.avatar_urls ) {
+		Object.keys( authorDetails.avatar_urls ).forEach( ( size ) => {
 			avatarSizes.push( {
 				value: size,
 				label: `${ size } x ${ size }`,
@@ -61,63 +75,122 @@ function PostAuthorEdit( {
 	}
 
 	const blockProps = useBlockProps( {
-		className: classnames( {
+		className: clsx( {
 			[ `has-text-align-${ textAlign }` ]: textAlign,
 		} ),
 	} );
 
+	const authorOptions = authors?.length
+		? authors.map( ( { id, name } ) => {
+				return {
+					value: id,
+					label: name,
+				};
+		  } )
+		: [];
+
+	const handleSelect = ( nextAuthorId ) => {
+		editEntityRecord( 'postType', postType, postId, {
+			author: nextAuthorId,
+		} );
+	};
+
+	const showCombobox = authorOptions.length >= minimumUsersForCombobox;
+	const showAuthorControl =
+		!! postId && ! isDescendentOfQueryLoop && authorOptions.length > 0;
+
+	if ( ! supportsAuthor ) {
+		return (
+			<div { ...blockProps }>
+				{ sprintf(
+					// translators: %s: Name of the post type e.g: "post".
+					__( 'This post type (%s) does not support the author.' ),
+					postType
+				) }
+			</div>
+		);
+	}
+
 	return (
 		<>
 			<InspectorControls>
-				<PanelBody title={ __( 'Author Settings' ) }>
-					{ ! isDescendentOfQueryLoop && !! authors?.length && (
-						<SelectControl
-							label={ __( 'Author' ) }
-							value={ authorId }
-							options={ authors.map( ( { id, name } ) => {
-								return {
-									value: id,
-									label: name,
-								};
-							} ) }
-							onChange={ ( nextAuthorId ) => {
-								editEntityRecord(
-									'postType',
-									postType,
-									postId,
-									{
-										author: nextAuthorId,
-									}
-								);
-							} }
+				<PanelBody title={ __( 'Settings' ) }>
+					<VStack
+						spacing={ 4 }
+						className="wp-block-post-author__inspector-settings"
+					>
+						{ showAuthorControl &&
+							( ( showCombobox && (
+								<ComboboxControl
+									__next40pxDefaultSize
+									__nextHasNoMarginBottom
+									label={ __( 'Author' ) }
+									options={ authorOptions }
+									value={ authorId }
+									onChange={ handleSelect }
+									allowReset={ false }
+								/>
+							) ) || (
+								<SelectControl
+									__next40pxDefaultSize
+									__nextHasNoMarginBottom
+									label={ __( 'Author' ) }
+									value={ authorId }
+									options={ authorOptions }
+									onChange={ handleSelect }
+								/>
+							) ) }
+						<ToggleControl
+							__nextHasNoMarginBottom
+							label={ __( 'Show avatar' ) }
+							checked={ showAvatar }
+							onChange={ () =>
+								setAttributes( { showAvatar: ! showAvatar } )
+							}
 						/>
-					) }
-					<ToggleControl
-						label={ __( 'Show avatar' ) }
-						checked={ showAvatar }
-						onChange={ () =>
-							setAttributes( { showAvatar: ! showAvatar } )
-						}
-					/>
-					{ showAvatar && (
-						<SelectControl
-							label={ __( 'Avatar size' ) }
-							value={ attributes.avatarSize }
-							options={ avatarSizes }
-							onChange={ ( size ) => {
-								setAttributes( {
-									avatarSize: Number( size ),
-								} );
-							} }
+						{ showAvatar && (
+							<SelectControl
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
+								label={ __( 'Avatar size' ) }
+								value={ attributes.avatarSize }
+								options={ avatarSizes }
+								onChange={ ( size ) => {
+									setAttributes( {
+										avatarSize: Number( size ),
+									} );
+								} }
+							/>
+						) }
+						<ToggleControl
+							__nextHasNoMarginBottom
+							label={ __( 'Show bio' ) }
+							checked={ showBio }
+							onChange={ () =>
+								setAttributes( { showBio: ! showBio } )
+							}
 						/>
-					) }
-					<ToggleControl
-						label={ __( 'Show bio' ) }
-						checked={ showBio }
-						onChange={ () =>
-							setAttributes( { showBio: ! showBio } )
-						}
-					/>
+						<ToggleControl
+							__nextHasNoMarginBottom
+							label={ __( 'Link author name to author page' ) }
+							checked={ isLink }
+							onChange={ () =>
+								setAttributes( { isLink: ! isLink } )
+							}
+						/>
+						{ isLink && (
+							<ToggleControl
+								__nextHasNoMarginBottom
+								label={ __( 'Open in new tab' ) }
+								onChange={ ( value ) =>
+									setAttributes( {
+										linkTarget: value ? '_blank' : '_self',
+									} )
+								}
+								checked={ linkTarget === '_blank' }
+							/>
+						) }
+					</VStack>
 				</PanelBody>
 			</InspectorControls>
 
@@ -131,7 +204,7 @@ function PostAuthorEdit( {
 			</BlockControls>
 
 			<div { ...blockProps }>
-				{ showAvatar && authorDetails && (
+				{ showAvatar && authorDetails?.avatar_urls && (
 					<div className="wp-block-post-author__avatar">
 						<img
 							width={ attributes.avatarSize }
@@ -147,8 +220,8 @@ function PostAuthorEdit( {
 				<div className="wp-block-post-author__content">
 					{ ( ! RichText.isEmpty( byline ) || isSelected ) && (
 						<RichText
+							identifier="byline"
 							className="wp-block-post-author__byline"
-							multiline={ false }
 							aria-label={ __( 'Post author byline text' ) }
 							placeholder={ __( 'Write byline…' ) }
 							value={ byline }
@@ -158,12 +231,24 @@ function PostAuthorEdit( {
 						/>
 					) }
 					<p className="wp-block-post-author__name">
-						{ authorDetails?.name || __( 'Post Author' ) }
+						{ isLink ? (
+							<a
+								href="#post-author-pseudo-link"
+								onClick={ ( event ) => event.preventDefault() }
+							>
+								{ authorName }
+							</a>
+						) : (
+							authorName
+						) }
 					</p>
 					{ showBio && (
-						<p className="wp-block-post-author__bio">
-							{ authorDetails?.description }
-						</p>
+						<p
+							className="wp-block-post-author__bio"
+							dangerouslySetInnerHTML={ {
+								__html: authorDetails?.description,
+							} }
+						/>
 					) }
 				</div>
 			</div>

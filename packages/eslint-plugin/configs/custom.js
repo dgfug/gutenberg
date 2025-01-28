@@ -7,12 +7,15 @@ module.exports = {
 		'@wordpress/no-global-active-element': 'error',
 		'@wordpress/no-global-get-selection': 'error',
 		'@wordpress/no-unsafe-wp-apis': 'error',
+		'@wordpress/no-wp-process-env': 'error',
 	},
 	overrides: [
 		{
 			files: [ '*.native.js' ],
 			rules: {
 				'@wordpress/no-base-control-with-label-without-id': 'off',
+				'@wordpress/i18n-no-flanking-whitespace': 'error',
+				'@wordpress/i18n-hyphenated-range': 'error',
 			},
 		},
 		{
@@ -27,9 +30,4 @@ module.exports = {
 			},
 		},
 	],
-	settings: {
-		react: {
-			version: '16.6',
-		},
-	},
 };

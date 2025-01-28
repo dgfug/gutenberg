@@ -1,4 +1,3 @@
-// Required to ensure that subsequent blocks clear floats inside entry content.
-.wp-block-post-content + * {
-	clear: both;
+.wp-block-post-content {
+	display: flow-root;
 }

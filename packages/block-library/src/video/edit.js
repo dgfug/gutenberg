@@ -1,86 +1,69 @@
 /**
  * External dependencies
  */
-import classnames from 'classnames';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
  */
-import { getBlobByURL, isBlobURL } from '@wordpress/blob';
+import { isBlobURL } from '@wordpress/blob';
 import {
-	BaseControl,
-	Button,
 	Disabled,
-	PanelBody,
 	Spinner,
-	withNotices,
+	Placeholder,
+	__experimentalToolsPanel as ToolsPanel,
 } from '@wordpress/components';
 import {
 	BlockControls,
 	BlockIcon,
 	InspectorControls,
 	MediaPlaceholder,
-	MediaUpload,
-	MediaUploadCheck,
 	MediaReplaceFlow,
-	RichText,
 	useBlockProps,
-	store as blockEditorStore,
 } from '@wordpress/block-editor';
-import { useRef, useEffect } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { useRef, useEffect, useState } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
 import { useInstanceId } from '@wordpress/compose';
-import { useSelect } from '@wordpress/data';
+import { useDispatch } from '@wordpress/data';
 import { video as icon } from '@wordpress/icons';
-import { createBlock } from '@wordpress/blocks';
+import { store as noticesStore } from '@wordpress/notices';
 
 /**
  * Internal dependencies
  */
+import PosterImage from './poster-image';
 import { createUpgradedEmbedBlock } from '../embed/util';
+import {
+	useUploadMediaFromBlobURL,
+	useToolsPanelDropdownMenuProps,
+} from '../utils/hooks';
 import VideoCommonSettings from './edit-common-settings';
 import TracksEditor from './tracks-editor';
 import Tracks from './tracks';
+import { Caption } from '../utils/caption';
 
 const ALLOWED_MEDIA_TYPES = [ 'video' ];
-const VIDEO_POSTER_ALLOWED_MEDIA_TYPES = [ 'image' ];
 
 function VideoEdit( {
-	isSelected,
-	noticeUI,
+	isSelected: isSingleSelected,
 	attributes,
 	className,
 	setAttributes,
 	insertBlocksAfter,
 	onReplace,
-	noticeOperations,
 } ) {
 	const instanceId = useInstanceId( VideoEdit );
 	const videoPlayer = useRef();
-	const posterImageButton = useRef();
-	const { id, caption, controls, poster, src, tracks } = attributes;
-	const isTemporaryVideo = ! id && isBlobURL( src );
-	const mediaUpload = useSelect(
-		( select ) => select( blockEditorStore ).getSettings().mediaUpload
-	);
+	const { id, controls, poster, src, tracks } = attributes;
+	const [ temporaryURL, setTemporaryURL ] = useState( attributes.blob );
+	const dropdownMenuProps = useToolsPanelDropdownMenuProps();
 
-	useEffect( () => {
-		if ( ! id && isBlobURL( src ) ) {
-			const file = getBlobByURL( src );
-			if ( file ) {
-				mediaUpload( {
-					filesList: [ file ],
-					onFileChange: ( [ { url } ] ) => {
-						setAttributes( { src: url } );
-					},
-					onError: ( message ) => {
-						noticeOperations.createErrorNotice( message );
-					},
-					allowedTypes: ALLOWED_MEDIA_TYPES,
-				} );
-			}
-		}
-	}, [] );
+	useUploadMediaFromBlobURL( {
+		url: temporaryURL,
+		allowedTypes: ALLOWED_MEDIA_TYPES,
+		onChange: onSelectVideo,
+		onError: onUploadError,
+	} );
 
 	useEffect( () => {
 		// Placeholder may be rendered.
@@ -91,25 +74,36 @@ function VideoEdit( {
 
 	function onSelectVideo( media ) {
 		if ( ! media || ! media.url ) {
-			// in this case there was an error
+			// In this case there was an error
 			// previous attributes should be removed
-			// because they may be temporary blob urls
+			// because they may be temporary blob urls.
 			setAttributes( {
 				src: undefined,
 				id: undefined,
 				poster: undefined,
+				caption: undefined,
+				blob: undefined,
 			} );
+			setTemporaryURL();
 			return;
 		}
 
-		// sets the block's attribute and updates the edit component from the
-		// selected media
+		if ( isBlobURL( media.url ) ) {
+			setTemporaryURL( media.url );
+			return;
+		}
+
+		// Sets the block's attribute and updates the edit component from the
+		// selected media.
 		setAttributes( {
+			blob: undefined,
 			src: media.url,
 			id: media.id,
 			poster:
 				media.image?.src !== media.icon ? media.image?.src : undefined,
+			caption: media.caption,
 		} );
+		setTemporaryURL();
 	}
 
 	function onSelectURL( newSrc ) {
@@ -118,28 +112,51 @@ function VideoEdit( {
 			const embedBlock = createUpgradedEmbedBlock( {
 				attributes: { url: newSrc },
 			} );
-			if ( undefined !== embedBlock ) {
+			if ( undefined !== embedBlock && onReplace ) {
 				onReplace( embedBlock );
 				return;
 			}
-			setAttributes( { src: newSrc, id: undefined, poster: undefined } );
+			setAttributes( {
+				blob: undefined,
+				src: newSrc,
+				id: undefined,
+				poster: undefined,
+			} );
+			setTemporaryURL();
 		}
 	}
 
+	const { createErrorNotice } = useDispatch( noticesStore );
 	function onUploadError( message ) {
-		noticeOperations.removeAllNotices();
-		noticeOperations.createErrorNotice( message );
+		createErrorNotice( message, { type: 'snackbar' } );
 	}
 
-	const classes = classnames( className, {
-		'is-transient': isTemporaryVideo,
+	// Much of this description is duplicated from MediaPlaceholder.
+	const placeholder = ( content ) => {
+		return (
+			<Placeholder
+				className="block-editor-media-placeholder"
+				withIllustration={ ! isSingleSelected }
+				icon={ icon }
+				label={ __( 'Video' ) }
+				instructions={ __(
+					'Drag and drop a video, upload, or choose from your library.'
+				) }
+			>
+				{ content }
+			</Placeholder>
+		);
+	};
+
+	const classes = clsx( className, {
+		'is-transient': !! temporaryURL,
 	} );
 
 	const blockProps = useBlockProps( {
 		className: classes,
 	} );
 
-	if ( ! src ) {
+	if ( ! src && ! temporaryURL ) {
 		return (
 			<div { ...blockProps }>
 				<MediaPlaceholder
@@ -149,139 +166,94 @@ function VideoEdit( {
 					accept="video/*"
 					allowedTypes={ ALLOWED_MEDIA_TYPES }
 					value={ attributes }
-					notices={ noticeUI }
 					onError={ onUploadError }
+					placeholder={ placeholder }
 				/>
 			</div>
 		);
 	}
 
-	function onSelectPoster( image ) {
-		setAttributes( { poster: image.url } );
-	}
-
-	function onRemovePoster() {
-		setAttributes( { poster: undefined } );
-
-		// Move focus back to the Media Upload button.
-		posterImageButton.current.focus();
-	}
-
-	const videoPosterDescription = `video-block__poster-image-description-${ instanceId }`;
-
 	return (
 		<>
-			<BlockControls group="block">
-				<TracksEditor
-					tracks={ tracks }
-					onChange={ ( newTracks ) => {
-						setAttributes( { tracks: newTracks } );
-					} }
-				/>
-			</BlockControls>
-			<BlockControls group="other">
-				<MediaReplaceFlow
-					mediaId={ id }
-					mediaURL={ src }
-					allowedTypes={ ALLOWED_MEDIA_TYPES }
-					accept="video/*"
-					onSelect={ onSelectVideo }
-					onSelectURL={ onSelectURL }
-					onError={ onUploadError }
-				/>
-			</BlockControls>
+			{ isSingleSelected && (
+				<>
+					<BlockControls>
+						<TracksEditor
+							tracks={ tracks }
+							onChange={ ( newTracks ) => {
+								setAttributes( { tracks: newTracks } );
+							} }
+						/>
+					</BlockControls>
+					<BlockControls group="other">
+						<MediaReplaceFlow
+							mediaId={ id }
+							mediaURL={ src }
+							allowedTypes={ ALLOWED_MEDIA_TYPES }
+							accept="video/*"
+							onSelect={ onSelectVideo }
+							onSelectURL={ onSelectURL }
+							onError={ onUploadError }
+							onReset={ () => onSelectVideo( undefined ) }
+						/>
+					</BlockControls>
+				</>
+			) }
 			<InspectorControls>
-				<PanelBody title={ __( 'Video settings' ) }>
+				<ToolsPanel
+					label={ __( 'Settings' ) }
+					resetAll={ () => {
+						setAttributes( {
+							autoplay: false,
+							controls: true,
+							loop: false,
+							muted: false,
+							playsInline: false,
+							preload: 'metadata',
+							poster: '',
+						} );
+					} }
+					dropdownMenuProps={ dropdownMenuProps }
+				>
 					<VideoCommonSettings
 						setAttributes={ setAttributes }
 						attributes={ attributes }
 					/>
-					<MediaUploadCheck>
-						<BaseControl className="editor-video-poster-control">
-							<BaseControl.VisualLabel>
-								{ __( 'Poster image' ) }
-							</BaseControl.VisualLabel>
-							<MediaUpload
-								title={ __( 'Select poster image' ) }
-								onSelect={ onSelectPoster }
-								allowedTypes={
-									VIDEO_POSTER_ALLOWED_MEDIA_TYPES
-								}
-								render={ ( { open } ) => (
-									<Button
-										variant="primary"
-										onClick={ open }
-										ref={ posterImageButton }
-										aria-describedby={
-											videoPosterDescription
-										}
-									>
-										{ ! poster
-											? __( 'Select' )
-											: __( 'Replace' ) }
-									</Button>
-								) }
-							/>
-							<p id={ videoPosterDescription } hidden>
-								{ poster
-									? sprintf(
-											/* translators: %s: poster image URL. */
-											__(
-												'The current poster image url is %s'
-											),
-											poster
-									  )
-									: __(
-											'There is no poster image currently selected'
-									  ) }
-							</p>
-							{ !! poster && (
-								<Button
-									onClick={ onRemovePoster }
-									variant="tertiary"
-								>
-									{ __( 'Remove' ) }
-								</Button>
-							) }
-						</BaseControl>
-					</MediaUploadCheck>
-				</PanelBody>
+					<PosterImage
+						poster={ poster }
+						setAttributes={ setAttributes }
+						instanceId={ instanceId }
+					/>
+				</ToolsPanel>
 			</InspectorControls>
 			<figure { ...blockProps }>
 				{ /*
-					Disable the video tag if the block is not selected
-					so the user clicking on it won't play the
-					video when the controls are enabled.
-				*/ }
-				<Disabled isDisabled={ ! isSelected }>
+                Disable the video tag if the block is not selected
+                so the user clicking on it won't play the
+                video when the controls are enabled.
+            */ }
+				<Disabled isDisabled={ ! isSingleSelected }>
 					<video
 						controls={ controls }
 						poster={ poster }
-						src={ src }
+						src={ src || temporaryURL }
 						ref={ videoPlayer }
 					>
 						<Tracks tracks={ tracks } />
 					</video>
 				</Disabled>
-				{ isTemporaryVideo && <Spinner /> }
-				{ ( ! RichText.isEmpty( caption ) || isSelected ) && (
-					<RichText
-						tagName="figcaption"
-						aria-label={ __( 'Video caption text' ) }
-						placeholder={ __( 'Add caption' ) }
-						value={ caption }
-						onChange={ ( value ) =>
-							setAttributes( { caption: value } )
-						}
-						inlineToolbar
-						__unstableOnSplitAtEnd={ () =>
-							insertBlocksAfter( createBlock( 'core/paragraph' ) )
-						}
-					/>
-				) }
+				{ !! temporaryURL && <Spinner /> }
+				<Caption
+					attributes={ attributes }
+					setAttributes={ setAttributes }
+					isSelected={ isSingleSelected }
+					insertBlocksAfter={ insertBlocksAfter }
+					label={ __( 'Video caption text' ) }
+					showToolbarButton={ isSingleSelected }
+				/>
 			</figure>
 		</>
 	);
 }
 
-export default withNotices( VideoEdit );
+export default VideoEdit;

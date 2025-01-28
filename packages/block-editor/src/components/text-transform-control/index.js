@@ -1,27 +1,41 @@
 /**
+ * External dependencies
+ */
+import clsx from 'clsx';
+
+/**
  * WordPress dependencies
  */
-import { Button } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import {
+	reset,
 	formatCapitalize,
 	formatLowercase,
 	formatUppercase,
 } from '@wordpress/icons';
+import {
+	__experimentalToggleGroupControl as ToggleGroupControl,
+	__experimentalToggleGroupControlOptionIcon as ToggleGroupControlOptionIcon,
+} from '@wordpress/components';
 
 const TEXT_TRANSFORMS = [
 	{
-		name: __( 'Uppercase' ),
+		label: __( 'None' ),
+		value: 'none',
+		icon: reset,
+	},
+	{
+		label: __( 'Uppercase' ),
 		value: 'uppercase',
 		icon: formatUppercase,
 	},
 	{
-		name: __( 'Lowercase' ),
+		label: __( 'Lowercase' ),
 		value: 'lowercase',
 		icon: formatLowercase,
 	},
 	{
-		name: __( 'Capitalize' ),
+		label: __( 'Capitalize' ),
 		value: 'capitalize',
 		icon: formatCapitalize,
 	},
@@ -30,36 +44,39 @@ const TEXT_TRANSFORMS = [
 /**
  * Control to facilitate text transform selections.
  *
- * @param {Object}   props          Component props.
- * @param {string}   props.value    Currently selected text transform.
- * @param {Function} props.onChange Handles change in text transform selection.
+ * @param {Object}   props           Component props.
+ * @param {string}   props.className Class name to add to the control.
+ * @param {string}   props.value     Currently selected text transform.
+ * @param {Function} props.onChange  Handles change in text transform selection.
  *
- * @return {WPElement} Text transform control.
+ * @return {Element} Text transform control.
  */
-export default function TextTransformControl( { value, onChange } ) {
+export default function TextTransformControl( { className, value, onChange } ) {
 	return (
-		<fieldset className="block-editor-text-transform-control">
-			<legend>{ __( 'Letter case' ) }</legend>
-			<div className="block-editor-text-transform-control__buttons">
-				{ TEXT_TRANSFORMS.map( ( textTransform ) => {
-					return (
-						<Button
-							key={ textTransform.value }
-							icon={ textTransform.icon }
-							isSmall
-							isPressed={ value === textTransform.value }
-							aria-label={ textTransform.name }
-							onClick={ () =>
-								onChange(
-									value === textTransform.value
-										? undefined
-										: textTransform.value
-								)
-							}
-						/>
-					);
-				} ) }
-			</div>
-		</fieldset>
+		<ToggleGroupControl
+			isDeselectable
+			__nextHasNoMarginBottom
+			__next40pxDefaultSize
+			label={ __( 'Letter case' ) }
+			className={ clsx(
+				'block-editor-text-transform-control',
+				className
+			) }
+			value={ value }
+			onChange={ ( newValue ) => {
+				onChange( newValue === value ? undefined : newValue );
+			} }
+		>
+			{ TEXT_TRANSFORMS.map( ( option ) => {
+				return (
+					<ToggleGroupControlOptionIcon
+						key={ option.value }
+						value={ option.value }
+						icon={ option.icon }
+						label={ option.label }
+					/>
+				);
+			} ) }
+		</ToggleGroupControl>
 	);
 }

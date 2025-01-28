@@ -30,33 +30,36 @@ jest.mock( '../batch', () => {
 
 describe( 'editEntityRecord', () => {
 	it( 'throws when the edited entity does not have a loaded config.', async () => {
-		const entity = { kind: 'someKind', name: 'someName', id: 'someId' };
+		const entityConfig = {
+			kind: 'someKind',
+			name: 'someName',
+			id: 'someId',
+		};
 		const select = {
-			getEntity: jest.fn(),
+			getEntityConfig: jest.fn(),
 		};
 		const fulfillment = () =>
 			editEntityRecord(
-				entity.kind,
-				entity.name,
-				entity.id,
+				entityConfig.kind,
+				entityConfig.name,
+				entityConfig.id,
 				{}
 			)( { select } );
 		expect( fulfillment ).toThrow(
-			`The entity being edited (${ entity.kind }, ${ entity.name }) does not have a loaded config.`
+			`The entity being edited (${ entityConfig.kind }, ${ entityConfig.name }) does not have a loaded config.`
 		);
-		expect( select.getEntity ).toHaveBeenCalledTimes( 1 );
+		expect( select.getEntityConfig ).toHaveBeenCalledTimes( 1 );
 	} );
 } );
 
 describe( 'deleteEntityRecord', () => {
 	beforeEach( async () => {
 		apiFetch.mockReset();
-		jest.useFakeTimers();
 	} );
 
 	it( 'triggers a DELETE request for an existing record', async () => {
 		const deletedRecord = { title: 'new post', id: 10 };
-		const entities = [
+		const configs = [
 			{ name: 'post', kind: 'postType', baseURL: '/wp/v2/posts' },
 		];
 
@@ -65,8 +68,7 @@ describe( 'deleteEntityRecord', () => {
 			__unstableAcquireStoreLock: jest.fn(),
 			__unstableReleaseStoreLock: jest.fn(),
 		} );
-		// Provide entities
-		dispatch.mockReturnValueOnce( entities );
+		const resolveSelect = { getEntitiesConfig: jest.fn( () => configs ) };
 
 		// Provide response
 		apiFetch.mockImplementation( () => deletedRecord );
@@ -75,7 +77,7 @@ describe( 'deleteEntityRecord', () => {
 			'postType',
 			'post',
 			deletedRecord.id
-		)( { dispatch } );
+		)( { dispatch, resolveSelect } );
 
 		expect( apiFetch ).toHaveBeenCalledTimes( 1 );
 		expect( apiFetch ).toHaveBeenCalledWith( {
@@ -83,7 +85,7 @@ describe( 'deleteEntityRecord', () => {
 			method: 'DELETE',
 		} );
 
-		expect( dispatch ).toHaveBeenCalledTimes( 4 );
+		expect( dispatch ).toHaveBeenCalledTimes( 3 );
 		expect( dispatch ).toHaveBeenCalledWith( {
 			type: 'DELETE_ENTITY_RECORD_START',
 			kind: 'postType',
@@ -106,118 +108,174 @@ describe( 'deleteEntityRecord', () => {
 
 		expect( result ).toBe( deletedRecord );
 	} );
-} );
 
-describe( 'saveEditedEntityRecord', () => {
-	beforeEach( async () => {
-		apiFetch.mockReset();
-		jest.useFakeTimers();
-	} );
-
-	it( 'Uses "id" as a key when no entity key is provided', async () => {
-		const area = { id: 1, menu: 0 };
-		const entities = [
-			{
-				kind: 'root',
-				name: 'navigationArea',
-				baseURL: '/__experimental/block-navigation-areas',
-			},
-		];
-		const select = {
-			getEntityRecordNonTransientEdits: () => [],
-			hasEditsForEntityRecord: () => true,
-		};
-
-		const dispatch = Object.assign( jest.fn(), {
-			saveEntityRecord: jest.fn(),
-		} );
-		// Provide entities
-		dispatch.mockReturnValueOnce( entities );
-
-		// Provide response
-		const updatedRecord = { ...area, menu: 10 };
-		apiFetch.mockImplementation( () => {
-			return updatedRecord;
-		} );
-
-		await saveEditedEntityRecord(
-			'root',
-			'navigationArea',
-			1
-		)( { dispatch, select } );
-
-		expect( dispatch.saveEntityRecord ).toHaveBeenCalledWith(
-			'root',
-			'navigationArea',
-			{ id: 1 },
-			undefined
-		);
-	} );
-
-	it( 'Uses the entity key when provided', async () => {
-		const area = { area: 'primary', menu: 0 };
-		const entities = [
-			{
-				kind: 'root',
-				name: 'navigationArea',
-				baseURL: '/__experimental/block-navigation-areas',
-				key: 'area',
-			},
-		];
-		const select = {
-			getEntityRecordNonTransientEdits: () => [],
-			hasEditsForEntityRecord: () => true,
-		};
-
-		const dispatch = Object.assign( jest.fn(), {
-			saveEntityRecord: jest.fn(),
-		} );
-		// Provide entities
-		dispatch.mockReturnValueOnce( entities );
-
-		// Provide response
-		const updatedRecord = { ...area, menu: 10 };
-		apiFetch.mockImplementation( () => {
-			return updatedRecord;
-		} );
-
-		await saveEditedEntityRecord(
-			'root',
-			'navigationArea',
-			'primary'
-		)( { dispatch, select } );
-
-		expect( dispatch.saveEntityRecord ).toHaveBeenCalledWith(
-			'root',
-			'navigationArea',
-			{ area: 'primary' },
-			undefined
-		);
-	} );
-} );
-
-describe( 'saveEntityRecord', () => {
-	beforeEach( async () => {
-		apiFetch.mockReset();
-		jest.useFakeTimers();
-	} );
-
-	it( 'triggers a POST request for a new record', async () => {
-		const post = { title: 'new post' };
+	it( 'throws on error when throwOnError is true', async () => {
 		const entities = [
 			{ name: 'post', kind: 'postType', baseURL: '/wp/v2/posts' },
 		];
-		const select = {
-			getRawEntityRecord: () => post,
-		};
 
 		const dispatch = Object.assign( jest.fn(), {
 			receiveEntityRecords: jest.fn(),
 			__unstableAcquireStoreLock: jest.fn(),
 			__unstableReleaseStoreLock: jest.fn(),
 		} );
-		// Provide entities
-		dispatch.mockReturnValueOnce( entities );
+		const resolveSelect = { getEntitiesConfig: jest.fn( () => entities ) };
+
+		// Provide response
+		apiFetch.mockImplementation( () => {
+			throw new Error( 'API error' );
+		} );
+
+		await expect(
+			deleteEntityRecord(
+				'postType',
+				'post',
+				10,
+				{},
+				{
+					throwOnError: true,
+				}
+			)( { dispatch, resolveSelect } )
+		).rejects.toEqual( new Error( 'API error' ) );
+	} );
+
+	it( 'resolves on error when throwOnError is false', async () => {
+		const entities = [
+			{ name: 'post', kind: 'postType', baseURL: '/wp/v2/posts' },
+		];
+
+		const dispatch = Object.assign( jest.fn(), {
+			receiveEntityRecords: jest.fn(),
+			__unstableAcquireStoreLock: jest.fn(),
+			__unstableReleaseStoreLock: jest.fn(),
+		} );
+		const resolveSelect = { getEntitiesConfig: jest.fn( () => entities ) };
+
+		// Provide response
+		apiFetch.mockImplementation( () => {
+			throw new Error( 'API error' );
+		} );
+
+		await expect(
+			deleteEntityRecord(
+				'postType',
+				'post',
+				10,
+				{},
+				{
+					throwOnError: false,
+				}
+			)( { dispatch, resolveSelect } )
+		).resolves.toBe( false );
+	} );
+} );
+
+describe( 'saveEditedEntityRecord', () => {
+	beforeEach( async () => {
+		apiFetch.mockReset();
+	} );
+
+	it( 'Uses "id" as a key when no entity key is provided', async () => {
+		const item = { id: 1, menu: 0 };
+		const configs = [
+			{
+				kind: 'root',
+				name: 'menuItem',
+				baseURL: '/wp/v2/menu-items',
+			},
+		];
+		const select = {
+			getEntityRecordNonTransientEdits: () => [],
+			hasEditsForEntityRecord: () => true,
+		};
+
+		const dispatch = Object.assign( jest.fn(), {
+			saveEntityRecord: jest.fn(),
+		} );
+		const resolveSelect = { getEntitiesConfig: jest.fn( () => configs ) };
+
+		// Provide response
+		const updatedRecord = { ...item, menu: 10 };
+		apiFetch.mockImplementation( () => {
+			return updatedRecord;
+		} );
+
+		await saveEditedEntityRecord(
+			'root',
+			'menuItem',
+			1
+		)( { dispatch, select, resolveSelect } );
+
+		expect( dispatch.saveEntityRecord ).toHaveBeenCalledWith(
+			'root',
+			'menuItem',
+			{ id: 1 },
+			undefined
+		);
+	} );
+
+	it( 'Uses the entity key when provided', async () => {
+		const item = { name: 'primary', menu: 0 };
+		const configs = [
+			{
+				kind: 'root',
+				name: 'menuLocation',
+				baseURL: '/wp/v2/menu-items',
+				key: 'name',
+			},
+		];
+		const select = {
+			getEntityRecordNonTransientEdits: () => [],
+			hasEditsForEntityRecord: () => true,
+		};
+
+		const dispatch = Object.assign( jest.fn(), {
+			saveEntityRecord: jest.fn(),
+		} );
+		const resolveSelect = { getEntitiesConfig: jest.fn( () => configs ) };
+
+		// Provide response
+		const updatedRecord = { ...item, menu: 10 };
+		apiFetch.mockImplementation( () => {
+			return updatedRecord;
+		} );
+
+		await saveEditedEntityRecord(
+			'root',
+			'menuLocation',
+			'primary'
+		)( { dispatch, select, resolveSelect } );
+
+		expect( dispatch.saveEntityRecord ).toHaveBeenCalledWith(
+			'root',
+			'menuLocation',
+			{ name: 'primary' },
+			undefined
+		);
+	} );
+} );
+
+describe( 'saveEntityRecord', () => {
+	let dispatch;
+
+	beforeEach( async () => {
+		apiFetch.mockReset();
+		dispatch = Object.assign( jest.fn(), {
+			receiveEntityRecords: jest.fn(),
+			__unstableAcquireStoreLock: jest.fn(),
+			__unstableReleaseStoreLock: jest.fn(),
+		} );
+	} );
+
+	it( 'triggers a POST request for a new record', async () => {
+		const post = { title: 'new post' };
+		const configs = [
+			{ name: 'post', kind: 'postType', baseURL: '/wp/v2/posts' },
+		];
+		const select = {
+			getRawEntityRecord: () => post,
+		};
+		const resolveSelect = { getEntitiesConfig: jest.fn( () => configs ) };
 
 		// Provide response
 		const updatedRecord = { ...post, id: 10 };
@@ -229,7 +287,7 @@ describe( 'saveEntityRecord', () => {
 			'postType',
 			'post',
 			post
-		)( { select, dispatch } );
+		)( { select, dispatch, resolveSelect } );
 
 		expect( apiFetch ).toHaveBeenCalledTimes( 1 );
 		expect( apiFetch ).toHaveBeenCalledWith( {
@@ -238,7 +296,7 @@ describe( 'saveEntityRecord', () => {
 			data: post,
 		} );
 
-		expect( dispatch ).toHaveBeenCalledTimes( 3 );
+		expect( dispatch ).toHaveBeenCalledTimes( 2 );
 		expect( dispatch ).toHaveBeenCalledWith( {
 			type: 'SAVE_ENTITY_RECORD_START',
 			kind: 'postType',
@@ -274,22 +332,59 @@ describe( 'saveEntityRecord', () => {
 		expect( result ).toBe( updatedRecord );
 	} );
 
-	it( 'triggers a PUT request for an existing record', async () => {
-		const post = { id: 10, title: 'new post' };
+	it( 'throws on error when throwOnError is true', async () => {
+		const post = { title: 'new post' };
 		const entities = [
 			{ name: 'post', kind: 'postType', baseURL: '/wp/v2/posts' },
 		];
 		const select = {
 			getRawEntityRecord: () => post,
 		};
+		const resolveSelect = { getEntitiesConfig: jest.fn( () => entities ) };
 
-		const dispatch = Object.assign( jest.fn(), {
-			receiveEntityRecords: jest.fn(),
-			__unstableAcquireStoreLock: jest.fn(),
-			__unstableReleaseStoreLock: jest.fn(),
+		// Provide response
+		apiFetch.mockImplementation( () => {
+			throw new Error( 'API error' );
 		} );
-		// Provide entities
-		dispatch.mockReturnValueOnce( entities );
+
+		await expect(
+			saveEntityRecord( 'postType', 'post', post, {
+				throwOnError: true,
+			} )( { select, dispatch, resolveSelect } )
+		).rejects.toEqual( new Error( 'API error' ) );
+	} );
+
+	it( 'resolves on error when throwOnError is false', async () => {
+		const post = { title: 'new post' };
+		const entities = [
+			{ name: 'post', kind: 'postType', baseURL: '/wp/v2/posts' },
+		];
+		const select = {
+			getRawEntityRecord: () => post,
+		};
+		const resolveSelect = { getEntitiesConfig: jest.fn( () => entities ) };
+
+		// Provide response
+		apiFetch.mockImplementation( () => {
+			throw new Error( 'API error' );
+		} );
+
+		await expect(
+			saveEntityRecord( 'postType', 'post', post, {
+				throwOnError: false,
+			} )( { select, dispatch, resolveSelect } )
+		).resolves.toEqual( undefined );
+	} );
+
+	it( 'triggers a PUT request for an existing record', async () => {
+		const post = { id: 10, title: 'new post' };
+		const configs = [
+			{ name: 'post', kind: 'postType', baseURL: '/wp/v2/posts' },
+		];
+		const select = {
+			getRawEntityRecord: () => post,
+		};
+		const resolveSelect = { getEntitiesConfig: jest.fn( () => configs ) };
 
 		// Provide response
 		const updatedRecord = { ...post, id: 10 };
@@ -301,7 +396,7 @@ describe( 'saveEntityRecord', () => {
 			'postType',
 			'post',
 			post
-		)( { select, dispatch } );
+		)( { select, dispatch, resolveSelect } );
 
 		expect( apiFetch ).toHaveBeenCalledTimes( 1 );
 		expect( apiFetch ).toHaveBeenCalledWith( {
@@ -310,7 +405,7 @@ describe( 'saveEntityRecord', () => {
 			data: post,
 		} );
 
-		expect( dispatch ).toHaveBeenCalledTimes( 3 );
+		expect( dispatch ).toHaveBeenCalledTimes( 2 );
 		expect( dispatch ).toHaveBeenCalledWith( {
 			type: 'SAVE_ENTITY_RECORD_START',
 			kind: 'postType',
@@ -348,7 +443,7 @@ describe( 'saveEntityRecord', () => {
 
 	it( 'triggers a PUT request for an existing record with a custom key', async () => {
 		const postType = { slug: 'page', title: 'Pages' };
-		const entities = [
+		const configs = [
 			{
 				name: 'postType',
 				kind: 'root',
@@ -359,14 +454,7 @@ describe( 'saveEntityRecord', () => {
 		const select = {
 			getRawEntityRecord: () => ( {} ),
 		};
-
-		const dispatch = Object.assign( jest.fn(), {
-			receiveEntityRecords: jest.fn(),
-			__unstableAcquireStoreLock: jest.fn(),
-			__unstableReleaseStoreLock: jest.fn(),
-		} );
-		// Provide entities
-		dispatch.mockReturnValueOnce( entities );
+		const resolveSelect = { getEntitiesConfig: jest.fn( () => configs ) };
 
 		// Provide response
 		apiFetch.mockImplementation( () => postType );
@@ -375,7 +463,7 @@ describe( 'saveEntityRecord', () => {
 			'root',
 			'postType',
 			postType
-		)( { select, dispatch } );
+		)( { select, dispatch, resolveSelect } );
 
 		expect( apiFetch ).toHaveBeenCalledTimes( 1 );
 		expect( apiFetch ).toHaveBeenCalledWith( {
@@ -384,7 +472,7 @@ describe( 'saveEntityRecord', () => {
 			data: postType,
 		} );
 
-		expect( dispatch ).toHaveBeenCalledTimes( 3 );
+		expect( dispatch ).toHaveBeenCalledTimes( 2 );
 		expect( dispatch ).toHaveBeenCalledWith( {
 			type: 'SAVE_ENTITY_RECORD_START',
 			kind: 'root',

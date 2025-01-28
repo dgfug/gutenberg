@@ -36,41 +36,6 @@ This prop is passed directly to the `URLInput` component.
 
 ## Example
 
-{% codetabs %}
-{% ES5 %}
-
-```js
-wp.blocks.registerBlockType( /* ... */, {
-	// ...
-
-	attributes: {
-		url: {
-			type: 'string'
-		},
-		text: {
-			type: 'string'
-		}
-	},
-
-	edit: function( props ) {
-		return wp.element.createElement( wp.blockEditor.URLInputButton, {
-			className: props.className,
-			url: props.attributes.url,
-			onChange: function( url, post ) {
-				props.setAttributes( { url: url, text: (post && post.title) || 'Click here' } );
-			}
-		} );
-	},
-
-	save: function( props ) {
-		return wp.element.createElement( 'a', {
-			href: props.attributes.url,
-		}, props.attributes.text );
-	}
-} );
-```
-
-{% ESNext %}
 
 ```js
 import { registerBlockType } from '@wordpress/blocks';
@@ -103,7 +68,6 @@ registerBlockType( /* ... */, {
 } );
 ```
 
-{% end %}
 
 # `URLInput`
 
@@ -139,6 +103,12 @@ _Required._ Called when the value changes. The second parameter is `null` unless
 }
 ```
 
+### `onKeyDown`: `( event: KeyboardEvent ) => void`
+
+A callback invoked on the keydown event.
+
+-   Required: No
+
 ### `label: String`
 
 _Optional._ If this property is added, a label will be generated using label property as the content.
@@ -146,6 +116,11 @@ _Optional._ If this property is added, a label will be generated using label pro
 ### `className: String`
 
 _Optional._ Adds and optional class to the parent `div` that wraps the URLInput field and popover
+
+### `placeholder: String`
+
+_Optional._ Placeholder text to show when the field is empty, similar to the
+[`input` and `textarea` attribute of the same name](https://developer.mozilla.org/en-US/docs/Learn/HTML/Forms/HTML5_updates#The_placeholder_attribute).
 
 ### `disableSuggestions: Boolean`
 
@@ -157,41 +132,6 @@ This prop allows the suggestions list to be programmatically not rendered by pas
 
 ## Example
 
-{% codetabs %}
-{% ES5 %}
-
-```js
-wp.blocks.registerBlockType( /* ... */, {
-	// ...
-
-	attributes: {
-		url: {
-			type: 'string'
-		},
-		text: {
-			type: 'string'
-		}
-	},
-
-	edit: function( props ) {
-		return wp.element.createElement( wp.blockEditor.URLInput, {
-			className: props.className,
-			value: props.attributes.url,
-			onChange: function( url, post ) {
-				props.setAttributes( { url: url, text: (post && post.title) || 'Click here' } );
-			}
-		} );
-	},
-
-	save: function( props ) {
-		return wp.element.createElement( 'a', {
-			href: props.attributes.url,
-		}, props.attributes.text );
-	}
-} );
-```
-
-{% ESNext %}
 
 ```js
 import { registerBlockType } from '@wordpress/blocks';
@@ -224,5 +164,3 @@ registerBlockType( /* ... */, {
 	}
 } );
 ```
-
-{% end %}

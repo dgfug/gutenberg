@@ -1,9 +1,4 @@
 /**
- * External dependencies
- */
-import { mapValues, omit } from 'lodash';
-
-/**
  * WordPress dependencies
  */
 import { InnerBlocks } from '@wordpress/block-editor';
@@ -21,30 +16,124 @@ const TYPOGRAPHY_PRESET_DEPRECATION_MAP = {
 	textTransform: 'var:preset|text-transform|',
 };
 
+const migrateIdToRef = ( { navigationMenuId, ...attributes } ) => {
+	return {
+		...attributes,
+		ref: navigationMenuId,
+	};
+};
+
 const migrateWithLayout = ( attributes ) => {
 	if ( !! attributes.layout ) {
 		return attributes;
 	}
 
-	const { itemsJustification, orientation } = attributes;
-
-	const updatedAttributes = {
-		...attributes,
-	};
+	const { itemsJustification, orientation, ...updatedAttributes } =
+		attributes;
 
 	if ( itemsJustification || orientation ) {
 		Object.assign( updatedAttributes, {
 			layout: {
 				type: 'flex',
-				justifyContent: itemsJustification || 'left',
-				orientation: orientation || 'horizontal',
+				...( itemsJustification && {
+					justifyContent: itemsJustification,
+				} ),
+				...( orientation && { orientation } ),
 			},
 		} );
-		delete updatedAttributes.itemsJustification;
-		delete updatedAttributes.orientation;
 	}
 
 	return updatedAttributes;
+};
+
+const v6 = {
+	attributes: {
+		navigationMenuId: {
+			type: 'number',
+		},
+		textColor: {
+			type: 'string',
+		},
+		customTextColor: {
+			type: 'string',
+		},
+		rgbTextColor: {
+			type: 'string',
+		},
+		backgroundColor: {
+			type: 'string',
+		},
+		customBackgroundColor: {
+			type: 'string',
+		},
+		rgbBackgroundColor: {
+			type: 'string',
+		},
+		showSubmenuIcon: {
+			type: 'boolean',
+			default: true,
+		},
+		openSubmenusOnClick: {
+			type: 'boolean',
+			default: false,
+		},
+		overlayMenu: {
+			type: 'string',
+			default: 'mobile',
+		},
+		__unstableLocation: {
+			type: 'string',
+		},
+		overlayBackgroundColor: {
+			type: 'string',
+		},
+		customOverlayBackgroundColor: {
+			type: 'string',
+		},
+		overlayTextColor: {
+			type: 'string',
+		},
+		customOverlayTextColor: {
+			type: 'string',
+		},
+	},
+	supports: {
+		align: [ 'wide', 'full' ],
+		anchor: true,
+		html: false,
+		inserter: true,
+		typography: {
+			fontSize: true,
+			lineHeight: true,
+			__experimentalFontStyle: true,
+			__experimentalFontWeight: true,
+			__experimentalTextTransform: true,
+			__experimentalFontFamily: true,
+			__experimentalTextDecoration: true,
+			__experimentalDefaultControls: {
+				fontSize: true,
+			},
+		},
+		spacing: {
+			blockGap: true,
+			units: [ 'px', 'em', 'rem', 'vh', 'vw' ],
+			__experimentalDefaultControls: {
+				blockGap: true,
+			},
+		},
+		layout: {
+			allowSwitching: false,
+			allowInheriting: false,
+			default: {
+				type: 'flex',
+			},
+		},
+	},
+	save() {
+		return <InnerBlocks.Content />;
+	},
+	isEligible: ( { navigationMenuId } ) => !! navigationMenuId,
+	migrate: migrateIdToRef,
 };
 
 const v5 = {
@@ -135,7 +224,7 @@ const v5 = {
 	},
 	isEligible: ( { itemsJustification, orientation } ) =>
 		!! itemsJustification || !! orientation,
-	migrate: migrateWithLayout,
+	migrate: compose( migrateIdToRef, migrateWithLayout ),
 };
 
 const v4 = {
@@ -218,7 +307,7 @@ const v4 = {
 	save() {
 		return <InnerBlocks.Content />;
 	},
-	migrate: compose( migrateWithLayout, migrateFontFamily ),
+	migrate: compose( migrateIdToRef, migrateWithLayout, migrateFontFamily ),
 	isEligible( { style } ) {
 		return style?.typography?.fontFamily;
 	},
@@ -237,28 +326,30 @@ const migrateTypographyPresets = function ( attributes ) {
 		...attributes,
 		style: {
 			...attributes.style,
-			typography: mapValues(
-				attributes.style.typography,
-				( value, key ) => {
-					const prefix = TYPOGRAPHY_PRESET_DEPRECATION_MAP[ key ];
-					if ( prefix && value.startsWith( prefix ) ) {
-						const newValue = value.slice( prefix.length );
-						if (
-							'textDecoration' === key &&
-							'strikethrough' === newValue
-						) {
-							return 'line-through';
+			typography: Object.fromEntries(
+				Object.entries( attributes.style.typography ?? {} ).map(
+					( [ key, value ] ) => {
+						const prefix = TYPOGRAPHY_PRESET_DEPRECATION_MAP[ key ];
+						if ( prefix && value.startsWith( prefix ) ) {
+							const newValue = value.slice( prefix.length );
+							if (
+								'textDecoration' === key &&
+								'strikethrough' === newValue
+							) {
+								return [ key, 'line-through' ];
+							}
+							return [ key, newValue ];
 						}
-						return newValue;
+						return [ key, value ];
 					}
-					return value;
-				}
+				)
 			),
 		},
 	};
 };
 
 const deprecated = [
+	v6,
 	v5,
 	v4,
 	// Remove `isResponsive` attribute.
@@ -336,6 +427,7 @@ const deprecated = [
 			return attributes.isResponsive;
 		},
 		migrate: compose(
+			migrateIdToRef,
 			migrateWithLayout,
 			migrateFontFamily,
 			migrateIsResponsive
@@ -410,6 +502,7 @@ const deprecated = [
 			return false;
 		},
 		migrate: compose(
+			migrateIdToRef,
 			migrateWithLayout,
 			migrateFontFamily,
 			migrateTypographyPresets
@@ -454,9 +547,11 @@ const deprecated = [
 			html: false,
 			inserter: true,
 		},
-		migrate( attributes ) {
+		migrate: compose( migrateIdToRef, ( attributes ) => {
+			const { rgbTextColor, rgbBackgroundColor, ...restAttributes } =
+				attributes;
 			return {
-				...omit( attributes, [ 'rgbTextColor', 'rgbBackgroundColor' ] ),
+				...restAttributes,
 				customTextColor: attributes.textColor
 					? undefined
 					: attributes.rgbTextColor,
@@ -464,7 +559,7 @@ const deprecated = [
 					? undefined
 					: attributes.rgbBackgroundColor,
 			};
-		},
+		} ),
 		save() {
 			return <InnerBlocks.Content />;
 		},

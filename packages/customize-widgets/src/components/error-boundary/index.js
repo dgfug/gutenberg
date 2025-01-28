@@ -6,11 +6,12 @@ import { __ } from '@wordpress/i18n';
 import { Button } from '@wordpress/components';
 import { Warning } from '@wordpress/block-editor';
 import { useCopyToClipboard } from '@wordpress/compose';
+import { doAction } from '@wordpress/hooks';
 
 function CopyButton( { text, children } ) {
 	const ref = useCopyToClipboard( text );
 	return (
-		<Button variant="secondary" ref={ ref }>
+		<Button size="compact" variant="secondary" ref={ ref }>
 			{ children }
 		</Button>
 	);
@@ -26,6 +27,8 @@ export default class ErrorBoundary extends Component {
 
 	componentDidCatch( error ) {
 		this.setState( { error } );
+
+		doAction( 'editor.ErrorBoundary.errorLogged', error );
 	}
 
 	render() {

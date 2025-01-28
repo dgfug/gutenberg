@@ -54,7 +54,7 @@ function Tooltip( { children, onPress, style, visible } ) {
 	);
 }
 
-function Label( { align, text, xOffset, yOffset } ) {
+function Label( { align = 'center', text, xOffset = 0, yOffset = 0 } ) {
 	const animationValue = useRef( new Animated.Value( 0 ) ).current;
 	const [ dimensions, setDimensions ] = useState( null );
 	const visible = useContext( TooltipContext );
@@ -66,20 +66,19 @@ function Label( { align, text, xOffset, yOffset } ) {
 	}
 
 	useEffect( () => {
+		const startAnimation = () => {
+			Animated.timing( animationValue, {
+				toValue: visible ? 1 : 0,
+				duration: visible ? 300 : 150,
+				useNativeDriver: true,
+				delay: visible ? 500 : 0,
+				easing: Easing.out( Easing.quad ),
+			} ).start();
+		};
 		startAnimation();
-	}, [ visible ] );
+	}, [ animationValue, visible ] );
 
-	const startAnimation = () => {
-		Animated.timing( animationValue, {
-			toValue: visible ? 1 : 0,
-			duration: visible ? 300 : 150,
-			useNativeDriver: true,
-			delay: visible ? 500 : 0,
-			easing: Easing.out( Easing.quad ),
-		} ).start();
-	};
-
-	// Transforms rely upon onLayout to enable custom offsets additions
+	// Transforms rely upon onLayout to enable custom offsets additions.
 	let tooltipTransforms;
 	if ( dimensions ) {
 		tooltipTransforms = [
@@ -139,12 +138,6 @@ function Label( { align, text, xOffset, yOffset } ) {
 		</Animated.View>
 	);
 }
-
-Label.defaultProps = {
-	align: 'center',
-	xOffset: 0,
-	yOffset: 0,
-};
 
 Tooltip.Label = Label;
 

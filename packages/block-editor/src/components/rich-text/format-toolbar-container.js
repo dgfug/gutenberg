@@ -1,6 +1,7 @@
 /**
  * WordPress dependencies
  */
+import { __ } from '@wordpress/i18n';
 import { Popover, ToolbarGroup } from '@wordpress/components';
 
 /**
@@ -8,28 +9,36 @@ import { Popover, ToolbarGroup } from '@wordpress/components';
  */
 import BlockControls from '../block-controls';
 import FormatToolbar from './format-toolbar';
+import NavigableToolbar from '../navigable-toolbar';
 
-const FormatToolbarContainer = ( { inline, anchorRef } ) => {
-	if ( inline ) {
-		// Render in popover
-		return (
-			<Popover
-				noArrow
-				position="top center"
-				focusOnMount={ false }
-				anchorRef={ anchorRef }
-				className="block-editor-rich-text__inline-format-toolbar"
-				__unstableSlotName="block-toolbar"
+function InlineToolbar( { popoverAnchor } ) {
+	return (
+		<Popover
+			placement="top"
+			focusOnMount={ false }
+			anchor={ popoverAnchor }
+			className="block-editor-rich-text__inline-format-toolbar"
+			__unstableSlotName="block-toolbar"
+		>
+			<NavigableToolbar
+				className="block-editor-rich-text__inline-format-toolbar-group"
+				/* translators: accessibility text for the inline format toolbar */
+				aria-label={ __( 'Format tools' ) }
 			>
-				<div className="block-editor-rich-text__inline-format-toolbar-group">
-					<ToolbarGroup>
-						<FormatToolbar />
-					</ToolbarGroup>
-				</div>
-			</Popover>
-		);
+				<ToolbarGroup>
+					<FormatToolbar />
+				</ToolbarGroup>
+			</NavigableToolbar>
+		</Popover>
+	);
+}
+
+const FormatToolbarContainer = ( { inline, editableContentElement } ) => {
+	if ( inline ) {
+		return <InlineToolbar popoverAnchor={ editableContentElement } />;
 	}
-	// Render regular toolbar
+
+	// Render regular toolbar.
 	return (
 		<BlockControls group="inline">
 			<FormatToolbar />

@@ -1,12 +1,6 @@
 /**
- * External dependencies
- */
-import { noop, omit } from 'lodash';
-import classnames from 'classnames';
-/**
  * WordPress dependencies
  */
-import { useInstanceId } from '@wordpress/compose';
 import { forwardRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
@@ -17,11 +11,14 @@ import { URLInput } from '../';
 import LinkControlSearchResults from './search-results';
 import { CREATE_TYPE } from './constants';
 import useSearchHandler from './use-search-handler';
+import deprecated from '@wordpress/deprecated';
 
 // Must be a function as otherwise URLInput will default
 // to the fetchLinkSuggestions passed in block editor settings
 // which will cause an unintended http request.
 const noopSearchHandler = () => Promise.resolve( [] );
+
+const noop = () => {};
 
 const LinkControlSearchInput = forwardRef(
 	(
@@ -45,7 +42,8 @@ const LinkControlSearchInput = forwardRef(
 			suggestionsQuery = {},
 			withURLSuggestion = true,
 			createSuggestionButtonText,
-			useLabel = false,
+			hideLabelFromVision = false,
+			suffix,
 		},
 		ref
 	) => {
@@ -60,7 +58,6 @@ const LinkControlSearchInput = forwardRef(
 			? fetchSuggestions || genericSearchHandler
 			: noopSearchHandler;
 
-		const instanceId = useInstanceId( LinkControlSearchInput );
 		const [ focusedSuggestion, setFocusedSuggestion ] = useState();
 
 		/**
@@ -78,9 +75,7 @@ const LinkControlSearchInput = forwardRef(
 		const handleRenderSuggestions = ( props ) =>
 			renderSuggestions( {
 				...props,
-				instanceId,
 				withCreateSuggestion,
-				currentInputValue: value,
 				createSuggestionButtonText,
 				suggestionsQuery,
 				handleSuggestionClick: ( suggestion ) => {
@@ -94,7 +89,7 @@ const LinkControlSearchInput = forwardRef(
 		const onSuggestionSelected = async ( selectedSuggestion ) => {
 			let suggestion = selectedSuggestion;
 			if ( CREATE_TYPE === selectedSuggestion.type ) {
-				// Create a new page and call onSelect with the output from the onCreateSuggestion callback
+				// Create a new page and call onSelect with the output from the onCreateSuggestion callback.
 				try {
 					suggestion = await onCreateSuggestion(
 						selectedSuggestion.title
@@ -110,31 +105,32 @@ const LinkControlSearchInput = forwardRef(
 				allowDirectEntry ||
 				( suggestion && Object.keys( suggestion ).length >= 1 )
 			) {
+				const { id, url, ...restLinkProps } = currentLink ?? {};
 				onSelect(
 					// Some direct entries don't have types or IDs, and we still need to clear the previous ones.
-					{ ...omit( currentLink, 'id', 'url' ), ...suggestion },
+					{ ...restLinkProps, ...suggestion },
 					suggestion
 				);
 			}
 		};
 
-		const inputClasses = classnames( className, {
-			'has-no-label': ! useLabel,
-		} );
+		const inputLabel = placeholder ?? __( 'Search or type URL' );
 
 		return (
 			<div className="block-editor-link-control__search-input-container">
 				<URLInput
-					label={ useLabel ? 'URL' : undefined }
-					className={ inputClasses }
+					disableSuggestions={ currentLink?.url === value }
+					label={ inputLabel }
+					hideLabelFromVision={ hideLabelFromVision }
+					className={ className }
 					value={ value }
 					onChange={ onInputChange }
-					placeholder={ placeholder ?? __( 'Search or type url' ) }
+					placeholder={ inputLabel }
 					__experimentalRenderSuggestions={
 						showSuggestions ? handleRenderSuggestions : null
 					}
 					__experimentalFetchLinkSuggestions={ searchHandler }
-					__experimentalHandleURLSuggestions={ true }
+					__experimentalHandleURLSuggestions
 					__experimentalShowInitialSuggestions={
 						showInitialSuggestions
 					}
@@ -152,6 +148,7 @@ const LinkControlSearchInput = forwardRef(
 						}
 					} }
 					ref={ ref }
+					suffix={ suffix }
 				/>
 				{ children }
 			</div>
@@ -160,3 +157,11 @@ const LinkControlSearchInput = forwardRef(
 );
 
 export default LinkControlSearchInput;
+
+export const __experimentalLinkControlSearchInput = ( props ) => {
+	deprecated( 'wp.blockEditor.__experimentalLinkControlSearchInput', {
+		since: '6.8',
+	} );
+
+	return <LinkControlSearchInput { ...props } />;
+};

@@ -5,6 +5,25 @@
  * @package Gutenberg
  */
 
+// Debug settings for parity with WordPress Core's PHPUnit tests.
+if ( ! defined( 'WP_DEBUG' ) ) {
+	define( 'WP_DEBUG', true );
+}
+if ( ! defined( 'LOCAL_WP_DEBUG_LOG' ) ) {
+	define( 'LOCAL_WP_DEBUG_LOG', true );
+}
+if ( ! defined( 'LOCAL_WP_DEBUG_DISPLAY' ) ) {
+	define( 'LOCAL_WP_DEBUG_DISPLAY', true );
+}
+if ( ! defined( 'LOCAL_SCRIPT_DEBUG' ) ) {
+	define( 'LOCAL_SCRIPT_DEBUG', true );
+}
+if ( ! defined( 'LOCAL_WP_ENVIRONMENT_TYPE' ) ) {
+	define( 'LOCAL_WP_ENVIRONMENT_TYPE', 'local' );
+}
+define( 'GUTENBERG_DIR_TESTDATA', __DIR__ . '/data/' );
+define( 'GUTENBERG_DIR_TESTFIXTURES', __DIR__ . '/fixtures/' );
+
 // Require composer dependencies.
 require_once dirname( __DIR__ ) . '/vendor/autoload.php';
 
@@ -16,11 +35,6 @@ if ( 'build' === getenv( 'LOCAL_DIR' ) ) {
 // Determine the tests directory (from a WP dev checkout).
 // Try the WP_TESTS_DIR environment variable first.
 $_tests_dir = getenv( 'WP_TESTS_DIR' );
-
-// Next, try the WP_PHPUNIT composer package.
-if ( ! $_tests_dir ) {
-	$_tests_dir = getenv( 'WP_PHPUNIT__DIR' );
-}
 
 // See if we're installed inside an existing WP dev instance.
 if ( ! $_tests_dir ) {
@@ -74,6 +88,9 @@ $GLOBALS['wp_tests_options'] = array(
 	'gutenberg-experiments' => array(
 		'gutenberg-widget-experiments' => '1',
 		'gutenberg-full-site-editing'  => 1,
+		'gutenberg-form-blocks'        => 1,
+		'gutenberg-block-experiments'  => 1,
+		'gutenberg-media-processing'   => 1,
 	),
 );
 
@@ -85,4 +102,3 @@ require $_tests_dir . '/includes/bootstrap.php';
 
 // Use existing behavior for wp_die during actual test execution.
 remove_filter( 'wp_die_handler', 'fail_if_died' );
-

@@ -1,7 +1,8 @@
 {
-	"apiVersion": 2,
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
 	"name": "core/post-comments-form",
-	"title": "Post Comments Form",
+	"title": "Comments Form",
 	"category": "theme",
 	"description": "Display a post's comments form.",
 	"textdomain": "default",
@@ -15,7 +16,16 @@
 		"html": false,
 		"color": {
 			"gradients": true,
-			"link": true
+			"heading": true,
+			"link": true,
+			"__experimentalDefaultControls": {
+				"background": true,
+				"text": true
+			}
+		},
+		"spacing": {
+			"margin": true,
+			"padding": true
 		},
 		"typography": {
 			"fontSize": true,
@@ -27,7 +37,29 @@
 			"__experimentalDefaultControls": {
 				"fontSize": true
 			}
+		},
+		"__experimentalBorder": {
+			"radius": true,
+			"color": true,
+			"width": true,
+			"style": true,
+			"__experimentalDefaultControls": {
+				"radius": true,
+				"color": true,
+				"width": true,
+				"style": true
+			}
 		}
 	},
-	"style": [ "wp-block-post-comments-form", "wp-block-buttons", "wp-block-button" ]
+	"editorStyle": "wp-block-post-comments-form-editor",
+	"style": [
+		"wp-block-post-comments-form",
+		"wp-block-buttons",
+		"wp-block-button"
+	],
+	"example": {
+		"attributes": {
+			"textAlign": "center"
+		}
+	}
 }

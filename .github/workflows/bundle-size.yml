@@ -35,23 +35,22 @@ jobs:
     build:
         name: Check
         runs-on: ubuntu-latest
-        strategy:
-            matrix:
-                node: ['14']
 
         steps:
-            - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+            - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
               with:
                   fetch-depth: 1
+                  show-progress: ${{ runner.debug == '1' && 'true' || 'false' }}
 
-            - name: Use desired version of NodeJS
-              uses: actions/setup-node@38d90ce44d5275ad62cc48384b3d8a58c500bb5f # v2.2.2
+            - name: Use desired version of Node.js
+              uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
               with:
-                  node-version: ${{ matrix.node }}
+                  node-version-file: '.nvmrc'
+                  check-latest: true
                   cache: npm
 
-            - uses: preactjs/compressed-size-action@df6e03e187079aef959a2878311639c77b95ee2e # v2.2.0
+            - uses: preactjs/compressed-size-action@6fa0e7ca017120c754863b31123c5ee2860fd434 # v2.7.0
               with:
                   repo-token: '${{ secrets.GITHUB_TOKEN }}'
-                  pattern: '{build/**/*.min.js,build/**/*.css}'
+                  pattern: '{build/**/*.min.js,build/**/*.css,build-module/**/*.min.js}'
                   clean-script: 'distclean'

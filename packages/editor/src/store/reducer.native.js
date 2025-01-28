@@ -9,12 +9,11 @@ import { combineReducers } from '@wordpress/data';
 import {
 	postId,
 	postType,
-	preferences,
+	renderingMode,
 	saving,
 	postLock,
 	postSavingLock,
 	template,
-	isReady,
 	editorSettings,
 } from './reducer.js';
 
@@ -84,12 +83,11 @@ export default combineReducers( {
 	postId,
 	postType,
 	postTitle,
-	preferences,
+	renderingMode,
 	saving,
 	postLock,
 	postSavingLock,
 	template,
-	isReady,
 	editorSettings,
 	clipboard,
 	notices,

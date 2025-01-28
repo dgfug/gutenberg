@@ -7,7 +7,6 @@ import gradientParser from 'gradient-parser';
 /**
  * WordPress dependencies
  */
-import { colorsUtils } from '@wordpress/components';
 import { RadialGradient, Stop, SVG, Defs, Rect } from '@wordpress/primitives';
 import { useResizeObserver } from '@wordpress/compose';
 import { useMemo } from '@wordpress/element';
@@ -16,6 +15,7 @@ import { useMemo } from '@wordpress/element';
  * Internal dependencies
  */
 import styles from './style.scss';
+import { colorsUtils } from '../color-settings/utils';
 
 export function getGradientAngle( gradientValue ) {
 	const angleBase = 45;
@@ -51,7 +51,9 @@ export function getGradientAngle( gradientValue ) {
 		}
 	} else if ( angleType === 'angle' ) {
 		return parseFloat( angle );
-	} else return 4 * angleBase;
+	} else {
+		return 4 * angleBase;
+	}
 }
 
 export function getGradientColorGroup( gradientValue ) {
@@ -60,7 +62,7 @@ export function getGradientColorGroup( gradientValue ) {
 	const excludeSideOrCorner = /linear-gradient\(to\s+([a-z\s]+,)/;
 
 	// Parser has some difficulties with angle defined as a side or corner (e.g. `to left`)
-	// so it's going to be excluded in order to matching color groups
+	// so it's going to be excluded in order to matching color groups.
 	const modifiedGradientValue = gradientValue.replace(
 		excludeSideOrCorner,
 		'linear-gradient('
@@ -109,17 +111,20 @@ function Gradient( {
 	const { width = 0, height = 0 } = sizes || {};
 	const { isGradient, getGradientType, gradients } = colorsUtils;
 
-	const colorGroup = useMemo( () => getGradientColorGroup( gradientValue ), [
-		gradientValue,
-	] );
+	const colorGroup = useMemo(
+		() => getGradientColorGroup( gradientValue ),
+		[ gradientValue ]
+	);
 
-	const locations = useMemo( () => getColorLocations( colorGroup ), [
-		colorGroup,
-	] );
+	const locations = useMemo(
+		() => getColorLocations( colorGroup ),
+		[ colorGroup ]
+	);
 
-	const colors = useMemo( () => getGradientBaseColors( colorGroup ), [
-		colorGroup,
-	] );
+	const colors = useMemo(
+		() => getGradientBaseColors( colorGroup ),
+		[ colorGroup ]
+	);
 
 	if ( ! gradientValue || ! isGradient( gradientValue ) ) {
 		return null;
@@ -132,7 +137,7 @@ function Gradient( {
 		return (
 			<RNLinearGradient
 				colors={ colors }
-				useAngle={ true }
+				useAngle
 				angle={ getGradientAngle( gradientValue ) }
 				locations={ locations }
 				angleCenter={ angleCenter }
@@ -151,7 +156,7 @@ function Gradient( {
 			<SVG>
 				<Defs>
 					<RadialGradient
-						//eslint-disable-next-line no-restricted-syntax
+						// eslint-disable-next-line no-restricted-syntax
 						id="radialGradient"
 						gradientUnits="userSpaceOnUse"
 						rx="70%"

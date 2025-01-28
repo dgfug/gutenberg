@@ -1,6 +1,8 @@
 .interface-complementary-area {
 	background: $white;
 	color: $gray-900;
+	height: 100%;
+	overflow: auto;
 
 	@include break-small() {
 		-webkit-overflow-scrolling: touch;
@@ -22,21 +24,18 @@
 		top: 0;
 		z-index: z-index(".interface-complementary-area .components-panel__header");
 
-		&.edit-post-sidebar__panel-tabs {
-			top: $panel-header-height;
-
-			@include break-medium() {
-				top: 0;
-			}
+		&.editor-sidebar__panel-tabs {
+			top: 0;
 		}
 	}
 
-	p {
+	p:not(.components-base-control__help, .components-form-token-field__help) {
 		margin-top: 0;
 	}
 
 	h2 {
 		font-size: $default-font-size;
+		font-weight: 500;
 		color: $gray-900;
 		margin-bottom: 1.5em;
 	}
@@ -71,4 +70,8 @@
 		bottom: 10px;
 		left: auto;
 	}
+}
+
+.interface-complementary-area__fill {
+	height: 100%;
 }

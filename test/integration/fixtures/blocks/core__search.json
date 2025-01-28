@@ -1,15 +1,15 @@
 [
 	{
-		"clientId": "_clientId_0",
 		"name": "core/search",
 		"isValid": true,
 		"attributes": {
 			"showLabel": true,
 			"placeholder": "",
 			"buttonPosition": "button-outside",
-			"buttonUseIcon": false
+			"buttonUseIcon": false,
+			"query": {},
+			"isSearchFieldHidden": false
 		},
-		"innerBlocks": [],
-		"originalContent": ""
+		"innerBlocks": []
 	}
 ]

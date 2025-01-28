@@ -2,43 +2,56 @@
  * WordPress dependencies
  */
 import { useRefEffect } from '@wordpress/compose';
-
 import { useSelect, useDispatch } from '@wordpress/data';
 import { useContext } from '@wordpress/element';
+import { isRTL } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
 import { store as blockEditorStore } from '../../store';
 import { InsertionPointOpenRef } from '../block-tools/insertion-point';
+import { unlock } from '../../lock-unlock';
 
 export function useInBetweenInserter() {
 	const openRef = useContext( InsertionPointOpenRef );
-	const hasReducedUI = useSelect(
-		( select ) => select( blockEditorStore ).getSettings().hasReducedUI,
+	const isInBetweenInserterDisabled = useSelect(
+		( select ) =>
+			select( blockEditorStore ).getSettings().isDistractionFree ||
+			unlock( select( blockEditorStore ) ).isZoomOut(),
 		[]
 	);
 	const {
 		getBlockListSettings,
-		getBlockRootClientId,
 		getBlockIndex,
-		isBlockInsertionPointVisible,
 		isMultiSelecting,
 		getSelectedBlockClientIds,
+		getSettings,
 		getTemplateLock,
-	} = useSelect( blockEditorStore );
-	const { showInsertionPoint, hideInsertionPoint } = useDispatch(
-		blockEditorStore
-	);
+		__unstableIsWithinBlockOverlay,
+		getBlockEditingMode,
+		getBlockName,
+		getBlockAttributes,
+		getParentSectionBlock,
+	} = unlock( useSelect( blockEditorStore ) );
+	const { showInsertionPoint, hideInsertionPoint } =
+		useDispatch( blockEditorStore );
 
 	return useRefEffect(
 		( node ) => {
-			if ( hasReducedUI ) {
+			if ( isInBetweenInserterDisabled ) {
 				return;
 			}
 
 			function onMouseMove( event ) {
-				if ( openRef.current ) {
+				// openRef is the reference to the insertion point between blocks.
+				// If the reference is not set or the insertion point is already open, return.
+				if ( openRef === undefined || openRef.current ) {
+					return;
+				}
+
+				// Ignore text nodes sometimes detected in FireFox.
+				if ( event.target.nodeType === event.target.TEXT_NODE ) {
 					return;
 				}
 
@@ -51,9 +64,7 @@ export function useInBetweenInserter() {
 						'block-editor-block-list__layout'
 					)
 				) {
-					if ( isBlockInsertionPointVisible() ) {
-						hideInsertionPoint();
-					}
+					hideInsertionPoint();
 					return;
 				}
 
@@ -69,31 +80,42 @@ export function useInBetweenInserter() {
 					rootClientId = blockElement.getAttribute( 'data-block' );
 				}
 
-				// Don't set the insertion point if the template is locked.
-				if ( getTemplateLock( rootClientId ) ) {
+				if (
+					getTemplateLock( rootClientId ) ||
+					getBlockEditingMode( rootClientId ) === 'disabled' ||
+					getBlockName( rootClientId ) === 'core/block' ||
+					( rootClientId &&
+						getBlockAttributes( rootClientId ).layout
+							?.isManualPlacement )
+				) {
 					return;
 				}
 
+				const blockListSettings = getBlockListSettings( rootClientId );
 				const orientation =
-					getBlockListSettings( rootClientId )?.orientation ||
-					'vertical';
-				const rect = event.target.getBoundingClientRect();
-				const offsetTop = event.clientY - rect.top;
-				const offsetLeft = event.clientX - rect.left;
+					blockListSettings?.orientation || 'vertical';
+				const captureToolbars =
+					!! blockListSettings?.__experimentalCaptureToolbars;
+				const offsetTop = event.clientY;
+				const offsetLeft = event.clientX;
 
 				const children = Array.from( event.target.children );
 				let element = children.find( ( blockEl ) => {
+					const blockElRect = blockEl.getBoundingClientRect();
 					return (
 						( blockEl.classList.contains( 'wp-block' ) &&
 							orientation === 'vertical' &&
-							blockEl.offsetTop > offsetTop ) ||
+							blockElRect.top > offsetTop ) ||
 						( blockEl.classList.contains( 'wp-block' ) &&
 							orientation === 'horizontal' &&
-							blockEl.offsetLeft > offsetLeft )
+							( isRTL()
+								? blockElRect.right < offsetLeft
+								: blockElRect.left > offsetLeft ) )
 					);
 				} );
 
 				if ( ! element ) {
+					hideInsertionPoint();
 					return;
 				}
 
@@ -103,31 +125,36 @@ export function useInBetweenInserter() {
 					element = element.firstElementChild;
 
 					if ( ! element ) {
+						hideInsertionPoint();
 						return;
 					}
 				}
 
 				// Don't show the insertion point if a parent block has an "overlay"
 				// See https://github.com/WordPress/gutenberg/pull/34012#pullrequestreview-727762337
-				const parentOverlay = element.parentElement?.closest(
-					'.block-editor-block-content-overlay.overlay-active'
-				);
-				if ( parentOverlay ) {
-					return;
-				}
-
 				const clientId = element.id.slice( 'block-'.length );
-
-				if ( ! clientId ) {
+				if (
+					! clientId ||
+					__unstableIsWithinBlockOverlay( clientId ) ||
+					!! getParentSectionBlock( clientId )
+				) {
 					return;
 				}
 
-				// Don't show the inserter when hovering above (conflicts with
-				// block toolbar) or inside selected block(s).
-				if ( getSelectedBlockClientIds().includes( clientId ) ) {
+				// Don't show the inserter if the following conditions are met,
+				// as it conflicts with the block toolbar:
+				// 1. when hovering above or inside selected block(s)
+				// 2. when the orientation is vertical
+				// 3. when the __experimentalCaptureToolbars is not enabled
+				// 4. when the Top Toolbar is not disabled
+				if (
+					getSelectedBlockClientIds().includes( clientId ) &&
+					orientation === 'vertical' &&
+					! captureToolbars &&
+					! getSettings().hasFixedToolbar
+				) {
 					return;
 				}
-
 				const elementRect = element.getBoundingClientRect();
 
 				if (
@@ -138,20 +165,16 @@ export function useInBetweenInserter() {
 						( event.clientX > elementRect.right ||
 							event.clientX < elementRect.left ) )
 				) {
-					if ( isBlockInsertionPointVisible() ) {
-						hideInsertionPoint();
-					}
+					hideInsertionPoint();
 					return;
 				}
 
-				const index = getBlockIndex( clientId, rootClientId );
+				const index = getBlockIndex( clientId );
 
 				// Don't show the in-between inserter before the first block in
 				// the list (preserves the original behaviour).
 				if ( index === 0 ) {
-					if ( isBlockInsertionPointVisible() ) {
-						hideInsertionPoint();
-					}
+					hideInsertionPoint();
 					return;
 				}
 
@@ -169,13 +192,12 @@ export function useInBetweenInserter() {
 		[
 			openRef,
 			getBlockListSettings,
-			getBlockRootClientId,
 			getBlockIndex,
-			isBlockInsertionPointVisible,
 			isMultiSelecting,
 			showInsertionPoint,
 			hideInsertionPoint,
 			getSelectedBlockClientIds,
+			isInBetweenInserterDisabled,
 		]
 	);
 }

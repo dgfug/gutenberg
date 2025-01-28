@@ -1,17 +1,16 @@
 /**
  * External dependencies
  */
-import { first, last, partial, castArray } from 'lodash';
 import { Platform } from 'react-native';
 
 /**
  * WordPress dependencies
  */
 import { __ } from '@wordpress/i18n';
-import { Picker, ToolbarButton } from '@wordpress/components';
+import { Picker, ToolbarButton, ToolbarGroup } from '@wordpress/components';
 import { withInstanceId, compose } from '@wordpress/compose';
 import { withSelect, withDispatch } from '@wordpress/data';
-import { useRef, useState } from '@wordpress/element';
+import { useCallback, useEffect, useRef, useState } from '@wordpress/element';
 
 /**
  * Internal dependencies
@@ -36,9 +35,9 @@ export const BlockMover = ( {
 	isStackedHorizontally,
 } ) => {
 	const pickerRef = useRef();
-	const [ blockPageMoverState, setBlockPageMoverState ] = useState(
-		undefined
-	);
+	const [ shouldPresentPicker, setShouldPresentPicker ] = useState( false );
+	const [ blockPageMoverState, setBlockPageMoverState ] =
+		useState( undefined );
 	const showBlockPageMover = ( direction ) => () => {
 		if ( ! pickerRef.current ) {
 			setBlockPageMoverState( undefined );
@@ -46,8 +45,16 @@ export const BlockMover = ( {
 		}
 
 		setBlockPageMoverState( direction );
-		pickerRef.current.presentPicker();
+		setShouldPresentPicker( true );
 	};
+
+	// Ensure that the picker is only presented after state updates.
+	useEffect( () => {
+		if ( shouldPresentPicker ) {
+			pickerRef.current?.presentPicker();
+			setShouldPresentPicker( false );
+		}
+	}, [ shouldPresentPicker ] );
 
 	const {
 		description: {
@@ -83,20 +90,31 @@ export const BlockMover = ( {
 		const option = blockPageMoverOptions.find(
 			( el ) => el.value === value
 		);
-		if ( option && option.onSelect ) option.onSelect();
+		if ( option && option.onSelect ) {
+			option.onSelect();
+		}
 	};
+
+	const onLongPressMoveUp = useCallback(
+		showBlockPageMover( BLOCK_MOVER_DIRECTION_TOP ),
+		[]
+	);
+	const onLongPressMoveDown = useCallback(
+		showBlockPageMover( BLOCK_MOVER_DIRECTION_BOTTOM ),
+		[]
+	);
 
 	if ( ! canMove || ( isFirst && isLast && ! rootClientId ) ) {
 		return null;
 	}
 
 	return (
-		<>
+		<ToolbarGroup>
 			<ToolbarButton
 				title={ ! isFirst ? backwardButtonTitle : firstBlockTitle }
 				isDisabled={ isFirst }
 				onClick={ onMoveUp }
-				onLongPress={ showBlockPageMover( BLOCK_MOVER_DIRECTION_TOP ) }
+				onLongPress={ onLongPressMoveUp }
 				icon={ backwardButtonIcon }
 				extraProps={ { hint: backwardButtonHint } }
 			/>
@@ -105,9 +123,7 @@ export const BlockMover = ( {
 				title={ ! isLast ? forwardButtonTitle : lastBlockTitle }
 				isDisabled={ isLast }
 				onClick={ onMoveDown }
-				onLongPress={ showBlockPageMover(
-					BLOCK_MOVER_DIRECTION_BOTTOM
-				) }
+				onLongPress={ onLongPressMoveDown }
 				icon={ forwardButtonIcon }
 				extraProps={ {
 					hint: forwardButtonHint,
@@ -119,10 +135,10 @@ export const BlockMover = ( {
 				options={ blockPageMoverOptions }
 				onChange={ onPickerSelect }
 				title={ __( 'Change block position' ) }
-				leftAlign={ true }
+				leftAlign
 				hideCancelButton={ Platform.OS !== 'ios' }
 			/>
-		</>
+		</ToolbarGroup>
 	);
 };
 
@@ -134,14 +150,15 @@ export default compose(
 			getBlockRootClientId,
 			getBlockOrder,
 		} = select( blockEditorStore );
-		const normalizedClientIds = castArray( clientIds );
-		const firstClientId = first( normalizedClientIds );
+		const normalizedClientIds = Array.isArray( clientIds )
+			? clientIds
+			: [ clientIds ];
+		const firstClientId = normalizedClientIds[ 0 ];
 		const rootClientId = getBlockRootClientId( firstClientId );
 		const blockOrder = getBlockOrder( rootClientId );
-		const firstIndex = getBlockIndex( firstClientId, rootClientId );
+		const firstIndex = getBlockIndex( firstClientId );
 		const lastIndex = getBlockIndex(
-			last( normalizedClientIds ),
-			rootClientId
+			normalizedClientIds[ normalizedClientIds.length - 1 ]
 		);
 
 		return {
@@ -149,24 +166,27 @@ export default compose(
 			numberOfBlocks: blockOrder.length - 1,
 			isFirst: firstIndex === 0,
 			isLast: lastIndex === blockOrder.length - 1,
-			canMove: canMoveBlocks( clientIds, rootClientId ),
+			canMove: canMoveBlocks( clientIds ),
 			rootClientId,
 		};
 	} ),
 	withDispatch( ( dispatch, { clientIds, rootClientId } ) => {
-		const { moveBlocksDown, moveBlocksUp, moveBlocksToPosition } = dispatch(
-			blockEditorStore
-		);
+		const { moveBlocksDown, moveBlocksUp, moveBlocksToPosition } =
+			dispatch( blockEditorStore );
 		return {
-			onMoveDown: partial( moveBlocksDown, clientIds, rootClientId ),
-			onMoveUp: partial( moveBlocksUp, clientIds, rootClientId ),
-			onLongMove: ( targetIndex ) =>
-				partial(
-					moveBlocksToPosition,
-					clientIds,
-					rootClientId,
-					targetIndex
-				),
+			onMoveDown: ( ...args ) =>
+				moveBlocksDown( clientIds, rootClientId, ...args ),
+			onMoveUp: ( ...args ) =>
+				moveBlocksUp( clientIds, rootClientId, ...args ),
+			onLongMove:
+				( targetIndex ) =>
+				( ...args ) =>
+					moveBlocksToPosition(
+						clientIds,
+						rootClientId,
+						targetIndex,
+						...args
+					),
 		};
 	} ),
 	withInstanceId
